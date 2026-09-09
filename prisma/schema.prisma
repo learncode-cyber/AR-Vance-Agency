@@ -1,0 +1,4713 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// SETTINGS — single-row site-wide config, editable from admin
+// ============================================================
+model Settings {
+  id               Int      @id @default(1)
+  siteName         String   @default("AR Vance Agency")
+  tagline          String   @default("Smart Digital Solutions for Global Brands")
+  siteDescription  String   @default("") @db.Text
+  founded          String   @default("2021")
+
+  contactEmail     String   @default("hello@example.com")
+  contactPhone     String   @default("")
+  address          String   @default("")
+
+  socialLinkedin   String   @default("")
+  socialTwitter    String   @default("")
+  socialFacebook   String   @default("")
+  socialInstagram  String   @default("")
+
+  heroBadge        String   @default("Smart Digital Solutions")
+  heroTitle        String   @default("Your Digital Success")
+  heroTitleAccent  String   @default("Starts Today")
+  heroSubtitle     String   @default("") @db.Text
+  heroCtaPrimary   String   @default("Get Started")
+  heroCtaSecondary String   @default("Our Services")
+
+  ctaTitle         String   @default("Ready to Elevate Your Brand?")
+  ctaSubtitle      String   @default("") @db.Text
+  ctaButton        String   @default("Contact Us Today")
+
+  seoDefaultTitle  String   @default("")
+  seoDefaultDesc   String   @default("") @db.Text
+  seoTitleTemplate String   @default("%s | AR Vance Agency")
+
+  // ── Ads & Tracking — client-side (leave blank to disable) ──
+  ga4MeasurementId        String @default("")   // e.g. G-XXXXXXXXXX
+  metaPixelId             String @default("")   // e.g. 123456789012345
+  googleAdsConversionId   String @default("")   // e.g. AW-123456789
+  googleAdsConversionLabel String @default("")  // e.g. AbC-D_efG-h12_IjK
+
+  // ── Meta Conversions API — server-side (leave blank to disable) ──
+  metaAccessToken         String @default("") @db.Text  // from Events Manager → Settings → Conversions API
+  metaTestEventCode       String @default("")           // optional, for testing in Events Manager "Test Events" tab
+
+  // ── GA4 Measurement Protocol — server-side (leave blank to disable) ──
+  ga4ApiSecret            String @default("")   // from GA4 Admin → Data Streams → your stream → Measurement Protocol API secrets
+
+  // ── Google Ads API — server-side conversion upload (leave blank to disable) ──
+  googleAdsDeveloperToken   String @default("") @db.Text  // from Google Ads → Tools → API Center
+  googleAdsOAuthClientId    String @default("") @db.Text  // from Google Cloud Console → OAuth 2.0 Client ID
+  googleAdsOAuthClientSecret String @default("") @db.Text // from the same OAuth Client
+  googleAdsRefreshToken     String @default("") @db.Text  // auto-filled by the "Connect Google Ads Account" button in admin
+  googleAdsCustomerId       String @default("")           // your Ads account ID, digits only, e.g. 1234567890
+  googleAdsLoginCustomerId  String @default("")           // optional — only if this account is under an MCC/manager account
+  googleAdsConversionActionId String @default("")         // from Google Ads → Goals → Conversions → your action → "Conversion ID" segment
+
+  // ── Parent Brand Attribution (AR Qudrix framework) ──
+  parentBrandName         String @default("AR Qudrix")
+  parentBrandUrl          String @default("https://arqudrix.com")
+  parentBrandRelationship String @default("A Digital & Technology Company by AR Qudrix")
+  parentBrandShort        String @default("by AR Qudrix")   // used only where space is tight
+
+  updatedAt        DateTime @updatedAt
+}
+
+model Stat {
+  id        String  @id @default(cuid())
+  value     String
+  label     String
+  order     Int     @default(0)
+}
+
+// ============================================================
+// ADMIN USERS
+// ============================================================
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  role         String   @default("admin")   // admin, editor, team_member
+  
+  // Relations
+  leads        Lead[]
+  teamMember   TeamMember?   // User can have at most one TeamMember profile
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ============================================================
+// SERVICES
+// ============================================================
+model Service {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  emoji       String   @default("⭐")
+  title       String
+  shortDesc   String   @db.Text
+  longDesc    String   @db.Text
+  features    Json     // string[] stored as JSON — MySQL has no native array type
+  seoTitle    String   @default("")
+  seoDesc     String   @default("")
+  order       Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================================
+// PORTFOLIO
+// ============================================================
+model PortfolioItem {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  emoji       String   @default("💼")
+  image       String   @default("")
+  category    String
+  tags        Json     // string[] stored as JSON
+  result      String
+  shortDesc   String   @db.Text
+  challenge   String   @default("") @db.Text
+  solution    String   @default("") @db.Text
+  results     Json     // string[] stored as JSON
+  client      String   @default("")
+  order       Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================================
+// BLOG
+// ============================================================
+model BlogPost {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  title        String
+  excerpt      String   @db.Text
+  content      String   @db.Text
+  category     String
+  image        String   @default("")
+  author       String
+  authorRole   String   @default("")
+  publishedAt  DateTime @default(now())
+  readTime     String   @default("5 min read")
+  seoTitle     String   @default("")
+  seoDesc      String   @default("")
+  tags         Json     // string[] stored as JSON
+  featured     Boolean  @default(false)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ============================================================
+// CLIENTS & PROJECTS
+// ============================================================
+model Client {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  phone           String   @default("")
+  website         String   @default("")
+  logo            String   @default("")
+  
+  // Company Info
+  company         String
+  industry        String   @default("")
+  employeeCount   String   @default("")
+  address         String   @default("")
+  city            String   @default("")
+  country         String   @default("")
+  
+  // Relationship
+  primaryContact  String   @default("")                    // Contact person name
+  contactEmail    String   @default("")
+  contactPhone    String   @default("")
+  
+  // Business Info
+  budget          Float    @default(0)                     // Average project budget
+  busyPeriod      String   @default("")                    // Seasonal info
+  businessNeeds   String   @default("") @db.Text          // What they need
+  
+  // Relationship with Agency
+  status          String   @default("active")             // active, inactive, prospect
+  priority        String   @default("medium")             // low, medium, high, vip
+  rating          Float    @default(0)                    // Client satisfaction 0-5
+  notes           String   @default("") @db.Text          // Internal notes
+  
+  // Project History
+  projects        Project[]
+  communications  ClientCommunication[]
+  documents       ClientDocument[]
+  
+  // Analytics
+  analytics       ClientAnalytics?
+  
+  // Financial
+  totalSpent      Float    @default(0)
+  paymentTerms    String   @default("")                   // Net 30, Net 60, etc
+  lastProjectDate DateTime?
+  
+  // Portal Access
+  portalAccess    Boolean  @default(false)
+  portalPassword  String   @default("")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Project {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  description     String   @default("") @db.Text
+  
+  // Client Reference
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  // Project Details
+  category        String                                   // Web, Mobile, Design, etc
+  budget          Float    @default(0)
+  status          String   @default("active")             // active, completed, on-hold, archived
+  timeline        String   @default("")                   // "3 months", "6 weeks"
+  
+  // Team
+  teamMembers     String   @default("") @db.Text         // JSON: array of team member ids
+  leadDeveloper   String   @default("")
+  projectManager  String   @default("")
+  
+  // Deliverables
+  deliverables    String   @default("") @db.Text         // JSON array
+  technologies    String   @default("") @db.Text         // JSON array: ["React", "Node.js"]
+  
+  // Metrics & Results ✨ NEW
+  roi             Float    @default(0)                    // Return on investment %
+  completionRate  Float    @default(0)                    // 0-100
+  clientSatisfaction Float @default(0)                    // 0-5
+  
+  // Results Highlights ✨ NEW
+  resultsHighlights String @default("") @db.Text         // JSON: [{"label": "Traffic", "value": "+200%", "icon": "📈"}]
+  keyMetrics      String   @default("") @db.Text         // JSON: [{"name": "Conversion", "before": "2%", "after": "5%"}]
+  
+  // Media
+  coverImage      String   @default("")
+  gallery         String   @default("") @db.Text         // JSON array of all images
+  
+  // Before & After Gallery ✨ NEW
+  beforeAfterGallery String @default("") @db.Text       // JSON: [{"before": "url", "after": "url", "label": "Homepage"}]
+  
+  // Case Study ✨ ENHANCED
+  caseStudy       String   @default("") @db.Text         // Full case study content (HTML)
+  caseStudyPDF    String   @default("")                   // PDF URL for download
+  challenge       String   @default("") @db.Text         // Client's challenge
+  solution        String   @default("") @db.Text         // Our solution
+  outcome         String   @default("") @db.Text         // Results achieved
+  
+  // Testimonial ✨ ENHANCED
+  testimonial     String   @default("")                   // Client quote
+  testimonialAuthor String @default("")                   // Who said it
+  testimonialRole String   @default("")                   // Their position
+  testimonialImage String   @default("")                  // Avatar
+  
+  // Portfolio Settings ✨ NEW
+  featuredInPortfolio Boolean @default(false)
+  displayOrder    Int      @default(0)                   // Sort order on portfolio
+  showMetrics     Boolean  @default(true)
+  showTestimonial Boolean  @default(true)
+  
+  // SEO & Publishing ✨ NEW
+  published       Boolean  @default(false)
+  seoTitle        String   @default("")
+  seoDescription  String   @default("")
+  tags            String   @default("") @db.Text         // JSON array
+  
+  // Dates
+  startDate       DateTime?
+  endDate         DateTime?
+  dueDate         DateTime?
+  publishedAt     DateTime?
+  
+  // Portal & Tracking
+  portalLink      String   @default("")
+  progressNotes   String   @default("") @db.Text
+  
+  // Analytics
+  analytics       ProjectAnalytics?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ClientCommunication {
+  id              String   @id @default(cuid())
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  type            String                                   // email, call, meeting, message
+  subject         String
+  content         String   @db.Text
+  
+  // Meeting Info
+  meetingDate     DateTime?
+  meetingLink     String   @default("")                   // Zoom/Meet link
+  attendees       String   @default("")                   // JSON array
+  notes           String   @default("") @db.Text
+  
+  // File Attachments
+  attachments     String   @default("") @db.Text         // JSON array of file urls
+  
+  // Status
+  status          String   @default("pending")           // pending, completed, archived
+  followUpDate    DateTime?
+  
+  createdBy       String   @default("admin")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ClientDocument {
+  id              String   @id @default(cuid())
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  title           String
+  type            String                                   // contract, nda, invoice, agreement
+  fileUrl         String
+  fileSize        Int      @default(0)
+  
+  # Versions
+  version         Int      @default(1)
+  expiryDate      DateTime?
+  
+  # Access
+  isPublic        Boolean  @default(false)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+// ANALYTICS & REPORTING
+// ============================================================
+model ProjectAnalytics {
+  id              String   @id @default(cuid())
+  projectId       String   @unique
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  // Traffic & Engagement
+  pageViews       Int      @default(0)
+  uniqueVisitors  Int      @default(0)
+  bounceRate      Float    @default(0)                    // 0-100%
+  avgSessionTime  Float    @default(0)                    // seconds
+  
+  // Conversions
+  leads           Int      @default(0)
+  conversions     Int      @default(0)
+  conversionRate  Float    @default(0)                    // 0-100%
+  
+  // Revenue & ROI
+  revenue         Float    @default(0)
+  cost            Float    @default(0)
+  roi             Float    @default(0)                    // calculated
+  
+  // Engagement
+  clicks          Int      @default(0)
+  shares          Int      @default(0)
+  comments        Int      @default(0)
+  
+  // Timeline
+  trackingPeriod  String   @default("monthly")           // daily, weekly, monthly
+  startDate       DateTime @default(now())
+  endDate         DateTime @default(now())
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ClientAnalytics {
+  id              String   @id @default(cuid())
+  clientId        String   @unique
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  // Engagement
+  totalProjectsDelivered Int @default(0)
+  totalSpent      Float    @default(0)
+  avgProjectValue Float    @default(0)
+  
+  // Satisfaction & Retention
+  satisfactionScore Float  @default(0)                    // 0-5
+  retentionRate   Float    @default(0)                    // 0-100%
+  repeatClient    Boolean  @default(false)
+  
+  // Timeline
+  firstProjectDate DateTime?
+  lastProjectDate  DateTime?
+  lifetimeMonths   Int      @default(0)
+  
+  // Status
+  status          String   @default("active")
+  riskLevel       String   @default("low")               // low, medium, high
+  
+  updatedAt       DateTime @updatedAt
+}
+
+model RevenueReport {
+  id              String   @id @default(cuid())
+  
+  // Period
+  period          String                                  // "2024-01", "2024-Q1", "2024"
+  year            Int
+  month           Int      @default(0)
+  quarter         Int      @default(0)
+  
+  // Revenue
+  totalRevenue    Float    @default(0)
+  projectRevenue  Float    @default(0)
+  serviceRevenue  Float    @default(0)
+  
+  // Costs
+  totalCosts      Float    @default(0)
+  staffCosts      Float    @default(0)
+  operatingCosts  Float    @default(0)
+  
+  // Metrics
+  profit          Float    @default(0)
+  profitMargin    Float    @default(0)                    // 0-100%
+  growthRate      Float    @default(0)                    // month-over-month %
+  
+  // Projects
+  projectCount    Int      @default(0)
+  avgProjectValue Float    @default(0)
+  
+  // Comparison
+  previousPeriod  String   @default("")                   // For comparison
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([period, year])
+}
+
+model TeamPerformance {
+  id              String   @id @default(cuid())
+  teamMemberId    String   @unique
+  teamMember      TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  
+  // Projects & Workload
+  projectsCompleted Int    @default(0)
+  projectsInProgress Int   @default(0)
+  utilization     Float    @default(0)                    // 0-100%
+  
+  // Quality & Performance
+  avgProjectRating Float   @default(0)                    // 0-5
+  clientSatisfaction Float @default(0)                    // 0-5
+  onTimeDelivery  Float    @default(0)                    // 0-100%
+  qualityScore    Float    @default(0)                    // 0-100%
+  
+  // Skills & Development
+  skillsTags      String   @default("") @db.Text         // JSON array
+  certifications  String   @default("") @db.Text         // JSON array
+  trainingHours   Int      @default(0)
+  
+  // Metrics
+  billableHours   Float    @default(0)
+  revenue         Float    @default(0)
+  
+  // Status
+  performanceRating String  @default("average")          // excellent, good, average, needs_improvement
+  lastEvaluation  DateTime?
+  
+  updatedAt       DateTime @updatedAt
+}
+
+model LeadAnalytics {
+  id              String   @id @default(cuid())
+  
+  // Sources
+  source          String                                  // organic, paid, referral, direct, email
+  
+  // Conversion Funnel
+  leadsGenerated  Int      @default(0)
+  qualified       Int      @default(0)
+  contacted       Int      @default(0)
+  meetings        Int      @default(0)
+  proposals       Int      @default(0)
+  converted       Int      @default(0)
+  
+  // Rates
+  qualificationRate Float  @default(0)
+  contactRate     Float    @default(0)
+  meetingRate     Float    @default(0)
+  conversionRate  Float    @default(0)
+  
+  // Value
+  avgLeadValue    Float    @default(0)
+  totalValue      Float    @default(0)
+  cost            Float    @default(0)
+  roi             Float    @default(0)
+  
+  // Timeline
+  period          String                                  // "2024-01"
+  year            Int
+  month           Int
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+// BOOKINGS & CONSULTATIONS
+// ============================================================
+model ConsultationService {
+  id              String   @id @default(cuid())
+  
+  // Service Details
+  name            String                                  // e.g., "Website Consultation"
+  slug            String   @unique
+  description     String   @db.Text
+  icon            String   @default("📞")
+  
+  // Duration & Pricing
+  durationMinutes Int      @default(30)                  // 15, 30, 45, 60
+  price           Float    @default(0)                   // 0 = Free
+  currency        String   @default("USD")
+  
+  // Availability
+  isAvailable     Boolean  @default(true)
+  maxBookingsPerDay Int    @default(5)
+  
+  // Meeting Configuration
+  meetingType     String   @default("zoom")             // zoom, google_meet, phone, in-person
+  locationLink    String   @default("")                 // Zoom/Meet link template
+  address         String   @default("")                 // For in-person
+  
+  // Team Assignment
+  assignedTeamMembers String @default("[]") @db.Text    // JSON array of IDs
+  
+  // Customization
+  agendaTemplate  String   @default("") @db.Text       // Pre-filled agenda
+  followUpTemplate String  @default("") @db.Text       // Follow-up message template
+  
+  // Display
+  order           Int      @default(0)
+  active          Boolean  @default(true)
+  featured        Boolean  @default(false)
+  
+  // Relations
+  bookings        Booking[]
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Booking {
+  id              String   @id @default(cuid())
+  bookingNumber   String   @unique
+  
+  // Service & Scheduling
+  serviceId       String
+  service         ConsultationService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  
+  scheduledDate   DateTime
+  scheduledTime   String                                  // HH:MM format
+  endTime         String                                  // HH:MM format
+  
+  // Client Information
+  clientId        String?
+  client          Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  
+  guestName       String                                  // For non-registered clients
+  guestEmail      String
+  guestPhone      String
+  guestCompany    String   @default("")
+  
+  // Assigned Team Member
+  teamMemberId    String
+  teamMember      TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Restrict)
+  
+  // Booking Details
+  subject         String
+  message         String   @db.Text
+  budget          String   @default("")                  // Optional budget info
+  projectType     String   @default("")
+  
+  // Meeting Details
+  meetingLink     String   @default("")                  // Generated Zoom/Meet link
+  callInNumber    String   @default("")                  // Phone call-in details
+  password        String   @default("")                  // Meeting password
+  
+  // Status & Tracking
+  status          String   @default("pending")          // pending, confirmed, completed, cancelled, no-show
+  confirmationSent Boolean  @default(false)
+  reminderSent    Boolean  @default(false)
+  reminderSentAt  DateTime?
+  
+  // Notes & Follow-up
+  internalNotes   String   @default("") @db.Text        // Admin notes
+  meetingNotes    String   @default("") @db.Text        // Notes from the meeting
+  actionItems     String   @default("[]") @db.Text      // JSON array
+  
+  // Follow-up
+  followUpEmail   String   @default("")
+  followUpDate    DateTime?
+  followUpSent    Boolean  @default(false)
+  
+  // Feedback
+  clientFeedback  String   @default("")                  // How did we do?
+  rating          Int      @default(0)                   // 1-5 stars
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  cancelledAt     DateTime?
+  completedAt     DateTime?
+}
+
+model TimeSlot {
+  id              String   @id @default(cuid())
+  
+  // Team Member Availability
+  teamMemberId    String
+  teamMember      TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  
+  // Date & Time
+  dayOfWeek       Int                                     // 0-6 (Sunday-Saturday)
+  startTime       String                                  // HH:MM format
+  endTime         String                                  // HH:MM format
+  
+  // Status
+  isAvailable     Boolean  @default(true)
+  isBlocked       Boolean  @default(false)               // Vacation, etc
+  blockReason     String   @default("")
+  
+  // Specific Dates (Overrides recurring)
+  specificDate    DateTime?                              // If set, overrides dayOfWeek
+  
+  // Maximum Bookings
+  maxSlots        Int      @default(1)
+  bookedSlots     Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model BookingAvailability {
+  id              String   @id @default(cuid())
+  
+  // Service Availability
+  serviceId       String
+  
+  // Date Range
+  dateFrom        DateTime
+  dateTo          DateTime
+  
+  // Time Range
+  startTime       String                                  // HH:MM
+  endTime         String                                  // HH:MM
+  
+  // Days Available (JSON array: [1,2,3,4,5])
+  daysOfWeek      String   @default("[1,2,3,4,5]")      // Mon-Fri
+  
+  // Blackout Dates (Vacation, etc)
+  blackoutDates   String   @default("[]") @db.Text      // JSON array of dates
+  
+  // Break Times
+  breakTimes      String   @default("[]") @db.Text      // JSON: [{start: "12:00", end: "13:00"}]
+  
+  // Timezone
+  timezone        String   @default("UTC")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model BookingTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  
+  // Email Templates
+  confirmationEmail String @default("") @db.Text
+  reminderEmail   String   @default("") @db.Text
+  followUpEmail   String   @default("") @db.Text
+  
+  // Calendar Invite
+  calendarTitle   String   @default("")
+  calendarDesc    String   @default("") @db.Text
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+// TEAM
+// ============================================================
+model TeamMember {
+  id              String   @id @default(cuid())
+  slug            String   @unique                         // For dynamic pages: /team/john-doe
+  email           String   @unique
+  name            String
+  role            String
+  bio             String   @db.Text
+  shortBio        String   @default("")                    // Quick 1-liner for card
+  avatar          String   @default("")                    // Profile image URL
+  coverImage      String   @default("")                    // Cover photo for personal page
+  emoji           String   @default("👤")
+  
+  // Social & Contact
+  linkedin        String   @default("")
+  twitter         String   @default("")
+  website         String   @default("")
+  phone           String   @default("")
+  
+  // Detailed Info
+  specialization  String   @default("")                    // e.g., "Frontend Development"
+  experience      String   @default("")                    // e.g., "5 years"
+  skills          Json     @default("[]")                  // string[] - stored as JSON
+  achievements    String   @default("") @db.Text          // Rich achievements/portfolio
+  
+  // Access Control
+  userId          String?                                  // Link to User for self-profile editing
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  canEditProfile  Boolean  @default(false)                 // Allows user to edit own profile
+  
+  // Analytics & Performance
+  performance     TeamPerformance?
+  
+  // Display
+  order           Int      @default(0)
+  active          Boolean  @default(true)
+  featured        Boolean  @default(false)
+  
+  // SEO
+  seoTitle        String   @default("")
+  seoDesc         String   @default("") @db.Text
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+// TESTIMONIALS
+// ============================================================
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  role      String
+  initials  String
+  image     String   @default("")
+  rating    Int      @default(5)
+  text      String   @db.Text
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+}
+
+// ============================================================
+// CRM — LEADS (Phase 3 foundation)
+// ============================================================
+model Lead {
+  id            String   @id @default(cuid())
+  name          String
+  email         String
+  phone         String   @default("")
+  company       String   @default("")
+  subject       String
+  service       String   @default("")
+  message       String   @db.Text
+  valueEstimate Float?                        // estimated deal value, editable in admin
+  notes         String   @default("") @db.Text // internal notes (not visible to lead)
+  stage         String   @default("new")      // new, qualifying, proposal_sent, won, lost
+  source        String   @default("contact_form")
+
+  // ── Attribution — for server-side conversion matching ──
+  gclid         String   @default("")   // Google Ads click ID, captured from the URL at form load
+  fbclid        String   @default("")   // Meta click ID, captured from the URL at form load
+  fbp           String   @default("")   // Meta browser ID (_fbp cookie) — improves CAPI match quality
+  fbc           String   @default("")   // Meta click cookie (_fbc) — improves CAPI match quality
+  landingPage   String   @default("") @db.Text  // full URL the visitor first landed on
+  ip            String   @default("")
+  userAgent     String   @default("") @db.Text
+
+  // ── Server-side conversion send status (for debugging / audit) ──
+  metaCapiSentAt      DateTime?
+  metaCapiStatus      String   @default("")  // "sent", "failed", "" (not configured / no attempt)
+  googleAdsSentAt     DateTime?
+  googleAdsStatus     String   @default("")
+  ga4SentAt           DateTime?
+  ga4Status           String   @default("")
+
+  ownerId       String?
+  owner         User?    @relation(fields: [ownerId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ============================================================
+// API KEYS — for external systems (e.g. ARQ Software's central
+// management system) to pull data from this site via /api/external/v1/*
+// ============================================================
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String                          // human label, e.g. "ARQ Software Sync"
+  keyHash     String    @unique                // SHA-256 hash of the actual key — raw key is shown once at creation, never stored
+  keyPrefix   String                           // first 12 chars of raw key, shown in admin UI to identify which key is which
+  scopes      Json                             // e.g. ["leads:read","services:read","blog:read","portfolio:read"]
+  lastUsedAt  DateTime?
+  active      Boolean   @default(true)
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+}
+
+// ============================================================
+// FORM EVENTS — granular interaction tracking on the Contact form
+// (who focused which field, in what order, before submitting or
+// abandoning) so the admin can see funnel drop-off, not just
+// completed leads. No keystrokes are captured — only which field
+// was interacted with and when, which is privacy-respecting while
+// still answering "what is this visitor doing".
+// ============================================================
+model FormEvent {
+  id         String   @id @default(cuid())
+  sessionId  String                          // random ID generated client-side per page visit
+  eventType  String                          // form_start, field_focus, field_complete, form_submit, form_error
+  fieldName  String   @default("")           // e.g. "email", "phone", "message" — empty for form_start/form_submit
+  page       String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+// ============================================================
+// BOOKING & CONSULTATION
+// ============================================================
+
+model Consultation {
+  id              String   @id @default(cuid())
+  
+  // Booking Info
+  title           String
+  description     String   @db.Text
+  
+  // Participant
+  clientId        String?
+  clientEmail     String
+  clientName      String
+  clientPhone     String
+  
+  // Scheduling
+  date            DateTime
+  startTime       String   // HH:MM format
+  endTime         String   // HH:MM format
+  duration        Int      @default(60)  // minutes
+  timezone        String   @default("UTC")
+  
+  // Status
+  status          String   @default("pending")  // pending, confirmed, completed, cancelled
+  
+  // Meeting Info
+  meetingType     String   @default("zoom")    // zoom, google-meet, teams, phone
+  meetingLink     String   @default("")
+  meetingPassword String   @default("")
+  
+  // Meeting Details
+  notes           String   @default("") @db.Text
+  recordingUrl    String   @default("")
+  
+  // Reminders
+  emailReminder   Boolean  @default(true)
+  reminderSent    Boolean  @default(false)
+  
+  // Feedback
+  feedback        String   @default("") @db.Text
+  rating          Float    @default(0)  // 0-5
+  followUpRequired Boolean @default(false)
+  
+  // Client Portal
+  portalLink      String   @default("")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ConsultationSlot {
+  id              String   @id @default(cuid())
+  
+  // Day & Time
+  dayOfWeek       Int      @default(0)  // 0-6 (Sunday-Saturday)
+  startTime       String   // HH:MM
+  endTime         String   // HH:MM
+  
+  // Availability
+  isAvailable     Boolean  @default(true)
+  maxBookings     Int      @default(1)  // slots per day
+  currentBookings Int      @default(0)
+  
+  // Details
+  note            String   @default("")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+
+// ============================================================
+// E-COMMERCE & PRODUCTS (PHASE 4)
+// ============================================================
+
+model ProductCategory {
+  id              String   @id @default(cuid())
+  
+  // Category Info
+  name            String   @unique
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Display
+  icon            String   @default("📦")
+  color           String   @default("#3B82F6")
+  
+  // Status
+  active          Boolean  @default(true)
+  displayOrder    Int      @default(0)
+  
+  // Relations
+  products        Product[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  
+  // Basic Info
+  name            String
+  slug            String   @unique
+  description     String   @db.Text
+  
+  // Pricing & Stock
+  price           Float
+  comparePrice    Float    @default(0)  // Original price for discount display
+  cost            Float    @default(0)  // For profit calculation
+  stock           Int      @default(0)
+  sku             String   @unique
+  
+  // Category
+  categoryId      String
+  category        ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  // Detailed Info
+  weight          Float    @default(0)  // kg
+  dimensions      String   @default("")  // JSON: {length, width, height}
+  material        String   @default("")
+  color           String   @default("")
+  tags            String   @default("")  // comma-separated
+  
+  // Display
+  thumbnail       String   @default("")
+  gallery         String   @default("")  // JSON array of image URLs
+  isFeatured      Boolean  @default(false)
+  displayOrder    Int      @default(0)
+  
+  // SEO
+  seoTitle        String   @default("")
+  seoDescription  String   @default("")
+  seoKeywords     String   @default("")
+  
+  // Status
+  active          Boolean  @default(true)
+  published       Boolean  @default(true)
+  
+  // Relations
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  reviews         ProductReview[]
+  
+  // Tracking
+  viewCount       Int      @default(0)
+  purchaseCount   Int      @default(0)
+  rating          Float    @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ProductReview {
+  id              String   @id @default(cuid())
+  
+  // Review Info
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  // Reviewer (guest or registered)
+  reviewerName    String
+  reviewerEmail   String
+  
+  // Content
+  title           String
+  content         String   @db.Text
+  rating          Int      // 1-5 stars
+  
+  // Moderation
+  approved        Boolean  @default(false)
+  helpful         Int      @default(0)
+  unhelpful       Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Cart {
+  id              String   @id @default(cuid())
+  
+  // Session-based (guest) or User-based
+  sessionId       String   @unique @default(cuid())
+  userId          String?  // Optional, for registered users
+  
+  // Totals (calculated)
+  subtotal        Float    @default(0)
+  tax             Float    @default(0)
+  shipping        Float    @default(0)
+  total           Float    @default(0)
+  
+  // Items
+  items           CartItem[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model CartItem {
+  id              String   @id @default(cuid())
+  
+  // Relations
+  cartId          String
+  cart            Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  // Item Details
+  quantity        Int      @default(1)
+  price           Float    // Price at time of adding to cart
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  
+  // Order Info
+  orderNumber     String   @unique
+  status          String   @default("pending")  // pending, processing, shipped, delivered, cancelled
+  
+  // Customer Info
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  
+  // Shipping Address
+  shippingAddress String   @db.Text  // JSON
+  billingAddress  String   @db.Text  // JSON
+  
+  // Pricing
+  subtotal        Float
+  tax             Float
+  shipping        Float
+  discount        Float    @default(0)
+  total           Float
+  
+  // Payment
+  paymentMethod   String   // stripe, paypal, bank_transfer, cash
+  paymentStatus   String   @default("pending")  // pending, completed, failed
+  paymentId       String   @default("")  // External payment gateway ID
+  
+  // Shipping
+  trackingNumber  String   @default("")
+  shippingCarrier String   @default("")
+  shippedAt       DateTime?
+  
+  // Items
+  items           OrderItem[]
+  
+  // Notes
+  notes           String   @default("") @db.Text
+  adminNotes      String   @default("") @db.Text
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  
+  // Relations
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id])
+  
+  // Item Details
+  productName     String   // Store product name at time of order
+  quantity        Int
+  price           Float    // Price paid (may differ from current price)
+  
+  createdAt       DateTime @default(now())
+}
+
+model Coupon {
+  id              String   @id @default(cuid())
+  
+  // Coupon Info
+  code            String   @unique
+  description     String   @default("")
+  
+  // Discount
+  discountType    String   // percentage, fixed
+  discountValue   Float
+  maxDiscount     Float    @default(0)  // for percentage discounts
+  
+  // Validity
+  validFrom       DateTime
+  validUntil      DateTime
+  maxUses         Int      @default(0)  // 0 = unlimited
+  usedCount       Int      @default(0)
+  minOrderAmount  Float    @default(0)
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+
+
+// ============================================================
+// PAYMENT & EMAIL (PHASE 5)
+// ============================================================
+
+model PaymentGateway {
+  id              String   @id @default(cuid())
+  
+  // Gateway Info
+  name            String   // "stripe", "paypal"
+  type            String   // "stripe", "paypal"
+  
+  // Credentials (encrypted in production)
+  apiKey          String   @db.Text
+  secretKey       String   @db.Text
+  webhookSecret   String   @default("")
+  
+  // Settings
+  active          Boolean  @default(true)
+  testMode        Boolean  @default(true)
+  
+  // Transactions
+  transactions    PaymentTransaction[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model PaymentTransaction {
+  id              String   @id @default(cuid())
+  
+  // Relations
+  orderId         String   @unique
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  gatewayId       String
+  gateway         PaymentGateway @relation(fields: [gatewayId], references: [id])
+  
+  // Transaction Details
+  externalId      String   @unique  // Stripe/PayPal transaction ID
+  amount          Float
+  currency        String   @default("USD")
+  
+  // Status
+  status          String   // pending, processing, succeeded, failed, cancelled
+  errorMessage    String   @default("")
+  
+  // Metadata
+  paymentMethod   String   // card, paypal, etc
+  last4Digits     String   @default("")
+  receiptUrl      String   @default("")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model EmailTemplate {
+  id              String   @id @default(cuid())
+  
+  // Template Info
+  name            String   @unique
+  slug            String   @unique
+  subject         String
+  
+  // Content
+  htmlContent     String   @db.Text
+  textContent     String   @db.Text @default("")
+  
+  // Variables (comma-separated)
+  variables       String   @default("")  // {{customerName}}, {{orderNumber}}, etc
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  // Relations
+  sentEmails      EmailLog[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model EmailLog {
+  id              String   @id @default(cuid())
+  
+  // Email Info
+  templateId      String
+  template        EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  // Recipient
+  recipientEmail  String
+  recipientName   String
+  
+  // Subject & Content
+  subject         String
+  htmlContent     String   @db.Text
+  
+  // Status
+  status          String   // pending, sent, failed, bounced
+  errorMessage    String   @default("")
+  
+  // Tracking
+  sentAt          DateTime?
+  openedAt        DateTime?
+  clickedAt       DateTime?
+  bounceType      String   @default("")  // hard, soft, complaint
+  
+  // Metadata
+  metadata        String   @default("{}")  // JSON
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model EmailCampaign {
+  id              String   @id @default(cuid())
+  
+  // Campaign Info
+  name            String
+  subject         String
+  
+  // Content
+  htmlContent     String   @db.Text
+  
+  // Recipients
+  recipientCount  Int      @default(0)
+  sentCount       Int      @default(0)
+  
+  // Scheduling
+  scheduledFor    DateTime?
+  sentAt          DateTime?
+  
+  // Status
+  status          String   // draft, scheduled, sending, sent, failed
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Refund {
+  id              String   @id @default(cuid())
+  
+  // Relations
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  paymentTransactionId String
+  
+  // Refund Details
+  amount          Float
+  reason          String   @db.Text
+  
+  // Status
+  status          String   // pending, processing, completed, failed
+  refundId        String   @default("")  // External refund ID
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+
+
+// ============================================================
+// EMAIL CAMPAIGNS & MARKETING (PHASE 6)
+// ============================================================
+
+model EmailCampaignSegment {
+  id              String   @id @default(cuid())
+  
+  // Campaign Info
+  name            String
+  description     String   @db.Text @default("")
+  
+  // Segmentation Rules
+  rules           String   @db.Text  // JSON: {minSpend, maxSpend, tags, status}
+  
+  // Stats
+  totalRecipients Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model MarketingCampaign {
+  id              String   @id @default(cuid())
+  
+  // Campaign Info
+  name            String
+  subject         String
+  description     String   @db.Text @default("")
+  
+  // Content
+  htmlContent     String   @db.Text
+  textContent     String   @db.Text @default("")
+  
+  // Targeting
+  segmentId       String?
+  recipientCount  Int      @default(0)
+  
+  // Scheduling
+  scheduledFor    DateTime?
+  sentAt          DateTime?
+  
+  // Stats
+  sentCount       Int      @default(0)
+  openCount       Int      @default(0)
+  clickCount      Int      @default(0)
+  conversionCount Int      @default(0)
+  
+  // Status
+  status          String   @default("draft")  // draft, scheduled, sending, sent, paused
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ReferralProgram {
+  id              String   @id @default(cuid())
+  
+  // Program Info
+  name            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Rewards
+  referrerReward  Float    @default(0)  // Amount/discount for referrer
+  refereeReward   Float    @default(0)  // Amount/discount for referee
+  
+  // Settings
+  maxRewards      Int      @default(0)  // 0 = unlimited
+  minOrderAmount  Float    @default(0)  // Minimum order to qualify
+  active          Boolean  @default(true)
+  
+  // Relations
+  referrals       Referral[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Referral {
+  id              String   @id @default(cuid())
+  
+  // Relations
+  programId       String
+  program         ReferralProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  
+  // Referral Info
+  referrerEmail   String
+  referrerName    String
+  referralCode    String   @unique
+  referralLink    String   @unique
+  
+  // Stats
+  clickCount      Int      @default(0)
+  conversionCount Int      @default(0)
+  totalReward     Float    @default(0)
+  
+  // Status
+  status          String   @default("active")  // active, paused, inactive
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model LoyaltyProgram {
+  id              String   @id @default(cuid())
+  
+  // Program Info
+  name            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Points System
+  pointsPerDollar Float    @default(1)  // Points earned per $1 spent
+  pointsForSignup Int      @default(0)
+  pointsForReview Int      @default(0)
+  
+  // Tiers
+  tiers           String   @db.Text  // JSON array of tiers
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  // Relations
+  members         LoyaltyMember[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model LoyaltyMember {
+  id              String   @id @default(cuid())
+  
+  // Relations
+  programId       String
+  program         LoyaltyProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  
+  // Member Info
+  email           String
+  name            String
+  phone           String   @default("")
+  
+  // Points & Tier
+  totalPoints     Int      @default(0)
+  spentPoints     Int      @default(0)
+  currentTier     String   @default("bronze")  // bronze, silver, gold, platinum
+  
+  // Metrics
+  totalSpent      Float    @default(0)
+  totalOrders     Int      @default(0)
+  joinedAt        DateTime @default(now())
+  lastPurchaseAt  DateTime?
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([programId, email])
+}
+
+model LoyaltyRedemption {
+  id              String   @id @default(cuid())
+  
+  // Relations
+  memberId        String
+  member          LoyaltyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  
+  // Redemption Info
+  pointsUsed      Int
+  reward          String   @db.Text  // Description of reward
+  
+  // Status
+  status          String   @default("pending")  // pending, approved, redeemed, cancelled
+  approvedAt      DateTime?
+  redeemedAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model CustomerSegment {
+  id              String   @id @default(cuid())
+  
+  // Segment Info
+  name            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Criteria (JSON)
+  criteria        String   @db.Text  // {minSpent, maxSpent, tags, country, etc}
+  
+  // Stats
+  memberCount     Int      @default(0)
+  lastCalculatedAt DateTime?
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model MarketingMetric {
+  id              String   @id @default(cuid())
+  
+  // Metric Info
+  date            DateTime
+  
+  // Email Metrics
+  emailsSent      Int      @default(0)
+  emailsOpened    Int      @default(0)
+  emailsClicked   Int      @default(0)
+  emailsBounced   Int      @default(0)
+  
+  // Campaign Metrics
+  conversions     Int      @default(0)
+  conversionValue Float    @default(0)
+  
+  // Referral Metrics
+  referralClicks  Int      @default(0)
+  referralConversions Int  @default(0)
+  referralValue   Float    @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([date])
+}
+
+// ============================================================
+
+
+// ============================================================
+// AI CHATBOT & CUSTOMER SUPPORT (PHASE 7)
+// ============================================================
+
+model ChatBot {
+  id              String   @id @default(cuid())
+  
+  // Bot Info
+  name            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Configuration
+  aiModel         String   @default("claude-3-sonnet")  // AI model to use
+  systemPrompt    String   @db.Text  // System instructions for AI
+  temperature     Float    @default(0.7)
+  maxTokens       Int      @default(1000)
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  // Relations
+  conversations   ChatConversation[]
+  responses       ChatBotResponse[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ChatConversation {
+  id              String   @id @default(cuid())
+  
+  // Relations
+  botId           String
+  bot             ChatBot  @relation(fields: [botId], references: [id], onDelete: Cascade)
+  
+  // Conversation Info
+  visitorEmail    String
+  visitorName     String
+  visitorId       String   @default("")  // Session ID or user ID
+  
+  // Language
+  language        String   @default("en")
+  
+  // Status
+  status          String   @default("open")  // open, closed, waiting_for_human
+  
+  // Metrics
+  messageCount    Int      @default(0)
+  duration        Int      @default(0)  // seconds
+  resolved        Boolean  @default(false)
+  
+  // Relations
+  messages        ChatMessage[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ChatMessage {
+  id              String   @id @default(cuid())
+  
+  // Relations
+  conversationId  String
+  conversation    ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  // Message Info
+  role            String   // "user" or "assistant"
+  content         String   @db.Text
+  
+  // Metadata
+  language        String   @default("en")
+  sentiment       String   @default("neutral")  // positive, negative, neutral
+  
+  createdAt       DateTime @default(now())
+}
+
+model ChatBotResponse {
+  id              String   @id @default(cuid())
+  
+  // Relations
+  botId           String
+  bot             ChatBot  @relation(fields: [botId], references: [id], onDelete: Cascade)
+  
+  // Response Info
+  trigger         String   // Pattern/keyword that triggers this
+  response        String   @db.Text  // Pre-written response
+  
+  // Category
+  category        String   @default("general")
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  // Stats
+  usageCount      Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SupportTicket {
+  id              String   @id @default(cuid())
+  
+  // Ticket Info
+  ticketNumber    String   @unique
+  subject         String
+  description     String   @db.Text
+  
+  // Customer Info
+  customerEmail   String
+  customerName    String
+  customerPhone   String   @default("")
+  
+  // Priority & Category
+  priority        String   @default("medium")  // low, medium, high, urgent
+  category        String   @default("general")
+  
+  // Assignment
+  assignedTo      String   @default("")  // Admin ID
+  
+  // Status
+  status          String   @default("open")  // open, in_progress, waiting_customer, resolved, closed
+  
+  // Resolution
+  resolution      String   @db.Text @default("")
+  resolvedAt      DateTime?
+  
+  // Chat Integration
+  chatConversationId String?  // Link to chat conversation
+  
+  // Metrics
+  responseTime    Int      @default(0)  // minutes
+  resolutionTime  Int      @default(0)  // minutes
+  satisfaction    Int      @default(0)  // 1-5 rating
+  
+  // Relations
+  messages        TicketMessage[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model TicketMessage {
+  id              String   @id @default(cuid())
+  
+  // Relations
+  ticketId        String
+  ticket          SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  // Message Info
+  author          String   // "customer" or "staff"
+  authorEmail     String
+  authorName      String
+  content         String   @db.Text
+  
+  // Attachments
+  attachments     String   @default("")  // comma-separated file URLs
+  
+  createdAt       DateTime @default(now())
+}
+
+model ChatBotAnalytics {
+  id              String   @id @default(cuid())
+  
+  // Date
+  date            DateTime
+  
+  // Metrics
+  totalConversations Int   @default(0)
+  resolvedConversations Int @default(0)
+  totalMessages   Int      @default(0)
+  
+  // Bot Performance
+  averageDuration Int      @default(0)  // seconds
+  resolutionRate  Float    @default(0)  // percentage
+  
+  // Sentiment
+  positiveCount   Int      @default(0)
+  negativeCount   Int      @default(0)
+  neutralCount    Int      @default(0)
+  
+  // Escalation
+  escalatedCount  Int      @default(0)
+  
+  // Languages
+  languageStats   String   @db.Text @default("{}")  // JSON
+  
+  createdAt       DateTime @default(now())
+  
+  @@unique([date])
+}
+
+model KnowledgeBase {
+  id              String   @id @default(cuid())
+  
+  // Article Info
+  title           String
+  slug            String   @unique
+  content         String   @db.Text
+  
+  // Category
+  category        String
+  tags            String   @default("")
+  
+  // Status
+  published       Boolean  @default(false)
+  
+  // Metrics
+  viewCount       Int      @default(0)
+  helpfulCount    Int      @default(0)
+  unhelpfulCount  Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+
+
+// ============================================================
+// MOBILE APP & NATIVE FEATURES (PHASE 8)
+// ============================================================
+
+model MobileApp {
+  id              String   @id @default(cuid())
+  
+  // App Info
+  name            String   @unique
+  version         String   @default("1.0.0")
+  
+  // Configuration
+  bundleId        String   @default("com.arvance.app")
+  appName         String   @default("AR Vance")
+  
+  // Features
+  analyticsEnabled Boolean @default(true)
+  pushNotificationsEnabled Boolean @default(true)
+  offlineSyncEnabled Boolean @default(true)
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model DeviceRegistration {
+  id              String   @id @default(cuid())
+  
+  // Device Info
+  deviceId        String   @unique
+  deviceName      String
+  deviceType      String   // ios, android
+  osVersion       String
+  appVersion      String
+  
+  // User Info
+  userEmail       String?
+  userId          String?
+  
+  // Push Token
+  pushToken       String   @unique
+  
+  // Status
+  active          Boolean  @default(true)
+  lastActive      DateTime @default(now())
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model PushNotification {
+  id              String   @id @default(cuid())
+  
+  // Notification Info
+  title           String
+  body            String   @db.Text
+  data            String   @db.Text @default("{}")  // JSON
+  
+  // Targeting
+  deviceIds       String   @db.Text  // comma-separated or "all"
+  userIds         String   @db.Text @default("")
+  
+  // Delivery
+  sentCount       Int      @default(0)
+  readCount       Int      @default(0)
+  failureCount    Int      @default(0)
+  
+  // Status
+  status          String   @default("pending")  // pending, sending, sent, failed
+  sentAt          DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model OfflineSyncQueue {
+  id              String   @id @default(cuid())
+  
+  // Sync Info
+  deviceId        String
+  action          String   // create, update, delete
+  endpoint        String   // API endpoint
+  dataType        String   // resource type (product, order, etc)
+  
+  // Payload
+  payload         String   @db.Text  // JSON data
+  
+  // Status
+  status          String   @default("pending")  // pending, syncing, synced, failed
+  attempts        Int      @default(0)
+  lastError       String   @default("")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model MobileAnalytics {
+  id              String   @id @default(cuid())
+  
+  // Date
+  date            DateTime
+  
+  // App Metrics
+  sessions        Int      @default(0)
+  activeUsers     Int      @default(0)
+  newUsers        Int      @default(0)
+  
+  // Screen Views
+  screenViews     Int      @default(0)
+  topScreens      String   @db.Text @default("{}")  // JSON
+  
+  // Events
+  totalEvents     Int      @default(0)
+  eventStats      String   @db.Text @default("{}")  // JSON
+  
+  // Performance
+  avgSessionDuration Int   @default(0)  // seconds
+  crashCount      Int      @default(0)
+  
+  // Device Breakdown
+  iosUsers        Int      @default(0)
+  androidUsers    Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  
+  @@unique([date])
+}
+
+model AppFeatureFlag {
+  id              String   @id @default(cuid())
+  
+  // Feature Info
+  name            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Rollout
+  enabled         Boolean  @default(false)
+  rolloutPercentage Int    @default(0)  // 0-100
+  
+  // Targeting
+  targetDeviceTypes String @default("ios,android")
+  minAppVersion   String   @default("1.0.0")
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model CrashReport {
+  id              String   @id @default(cuid())
+  
+  // Crash Info
+  deviceId        String
+  appVersion      String
+  osVersion       String
+  
+  // Error Details
+  errorMessage    String   @db.Text
+  stackTrace      String   @db.Text @default("")
+  
+  // Context
+  userEmail       String?
+  lastScreen      String?
+  
+  // Status
+  status          String   @default("new")  // new, acknowledged, fixed
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+
+
+// ============================================================
+// ADVANCED ANALYTICS & AI (PHASE 9)
+// ============================================================
+
+model AnalyticsEvent {
+  id              String   @id @default(cuid())
+  
+  // Event Info
+  eventType       String   // purchase, view, click, cart_add, etc
+  eventName       String
+  
+  // User Info
+  userEmail       String
+  userId          String?
+  sessionId       String
+  
+  // Event Data
+  properties      String   @db.Text @default("{}")  // JSON
+  
+  // Context
+  source          String   @default("web")  // web, mobile, api
+  referrer        String   @default("")
+  
+  createdAt       DateTime @default(now())
+}
+
+model CustomReport {
+  id              String   @id @default(cuid())
+  
+  // Report Info
+  name            String
+  description     String   @db.Text @default("")
+  
+  // Configuration
+  metrics         String   @db.Text  // JSON array of metric names
+  dimensions      String   @db.Text  // JSON array of dimensions
+  filters         String   @db.Text @default("{}")  // JSON
+  
+  // Scheduling
+  scheduled       Boolean  @default(false)
+  scheduleFrequency String?  // daily, weekly, monthly
+  lastGeneratedAt DateTime?
+  nextScheduledAt DateTime?
+  
+  // Recipients
+  recipients      String   @db.Text @default("[]")  // JSON array
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AIInsight {
+  id              String   @id @default(cuid())
+  
+  // Insight Info
+  title           String
+  description     String   @db.Text
+  
+  // Classification
+  category        String   // sales, customer, product, trend
+  severity        String   @default("info")  // info, warning, critical
+  
+  // Data
+  metric          String
+  value           Float
+  previousValue   Float?
+  changePercent   Float?
+  
+  // Timeline
+  period          String   // today, week, month
+  generatedAt     DateTime @default(now())
+  
+  // Action
+  actionable      Boolean  @default(false)
+  recommendation  String   @db.Text @default("")
+  
+  // Status
+  acknowledged    Boolean  @default(false)
+  
+  createdAt       DateTime @default(now())
+}
+
+model AnomalyAlert {
+  id              String   @id @default(cuid())
+  
+  // Alert Info
+  metricName      String
+  metricValue     Float
+  expectedValue   Float
+  deviation       Float  // percentage deviation
+  
+  // Alert Details
+  severity        String   @default("medium")  // low, medium, high, critical
+  description     String   @db.Text
+  
+  // Investigation
+  rootCause       String   @default("")
+  investigation   String   @db.Text @default("")
+  
+  // Status
+  status          String   @default("new")  // new, investigating, resolved
+  resolvedAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model CustomerBehavior {
+  id              String   @id @default(cuid())
+  
+  // Customer Info
+  userEmail       String
+  userId          String?
+  
+  // Behavior Metrics
+  totalOrders     Int      @default(0)
+  totalSpent      Float    @default(0)
+  averageOrderValue Float  @default(0)
+  lastOrderDate   DateTime?
+  
+  // Engagement
+  sessionCount    Int      @default(0)
+  pageViewCount   Int      @default(0)
+  cartAbandonmentCount Int @default(0)
+  conversionRate  Float    @default(0)
+  
+  // Segmentation
+  segment         String   @default("new")  // new, regular, vip, at-risk
+  lifetime        String   @default("active")  // active, dormant, churned
+  
+  // Predictions
+  likelyChurn     Boolean  @default(false)
+  churnRisk       Float    @default(0)  // 0-100
+  predictedLTV    Float    @default(0)
+  
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  
+  @@unique([userEmail])
+}
+
+model ProductRecommendation {
+  id              String   @id @default(cuid())
+  
+  // Target Customer
+  userEmail       String
+  userId          String?
+  
+  // Product Info
+  productId       String
+  productName     String
+  productCategory String
+  
+  // Recommendation Details
+  reason          String   // similar_to_viewed, trending, based_on_order
+  score           Float    @default(0)  // 0-100
+  confidence      Float    @default(0)  // 0-100
+  
+  // Engagement
+  viewed          Boolean  @default(false)
+  viewedAt        DateTime?
+  purchased       Boolean  @default(false)
+  purchasedAt     DateTime?
+  
+  // Status
+  active          Boolean  @default(true)
+  expiresAt       DateTime?
+  
+  createdAt       DateTime @default(now())
+}
+
+model ChurnPrediction {
+  id              String   @id @default(cuid())
+  
+  // Customer Info
+  userEmail       String
+  userId          String?
+  
+  // Prediction Data
+  riskScore       Float  // 0-100
+  riskLevel       String  // low, medium, high, critical
+  
+  // Churn Indicators
+  daysInactive    Int
+  orderFrequencyDecline Float
+  cartAbandonment Int
+  supportTickets  Int
+  
+  // Retention Action
+  recommendedAction String  // discount, vip_offer, support_call
+  actionTaken     Boolean  @default(false)
+  actionDate      DateTime?
+  
+  // Outcome
+  churned         Boolean  @default(false)
+  churnedAt       DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([userEmail])
+}
+
+model KPITarget {
+  id              String   @id @default(cuid())
+  
+  // KPI Info
+  name            String
+  description     String   @db.Text @default("")
+  
+  // Metric
+  metricName      String
+  metricType      String   // revenue, conversion, retention, etc
+  
+  // Targets
+  targetValue     Float
+  targetPeriod    String   // month, quarter, year
+  
+  // Current
+  currentValue    Float    @default(0)
+  achievedPercent Float    @default(0)
+  
+  // Status
+  status          String   @default("on_track")  // on_track, at_risk, missed
+  
+  // Tracking
+  startDate       DateTime
+  endDate         DateTime
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AIForecasting {
+  id              String   @id @default(cuid())
+  
+  // Forecast Info
+  metric          String
+  period          String   // daily, weekly, monthly
+  
+  // Historical Data
+  historicalCount Int      @default(0)
+  accuracy        Float    @default(0)  // 0-100
+  
+  // Forecast Data
+  predictions     String   @db.Text  // JSON array of {date, value}
+  
+  // Intervals
+  confidenceLevel Float    @default(95)  // confidence interval
+  
+  // Status
+  active          Boolean  @default(true)
+  lastUpdatedAt   DateTime @default(now())
+  
+  createdAt       DateTime @default(now())
+}
+
+// ============================================================
+
+
+// ============================================================
+// ROLE-BASED ACCESS CONTROL & PERMISSIONS (PHASE 10)
+// ============================================================
+
+model Role {
+  id              String   @id @default(cuid())
+  
+  // Role Info
+  name            String   @unique
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Role Type
+  roleType        String   @default("custom")  // admin, editor, sub_admin, member, custom
+  level           Int      @default(0)  // 0=admin, 1=sub_admin, 2=editor, 3=member
+  
+  // Permissions
+  permissions     String   @db.Text @default("[]")  // JSON array of permission IDs
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  // Relations
+  users           User[]   @relation("UserRole")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Permission {
+  id              String   @id @default(cuid())
+  
+  // Permission Info
+  name            String   @unique
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Category
+  category        String   // users, content, pages, posts, portfolio, settings, analytics, etc
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model UserRole {
+  id              String   @id @default(cuid())
+  
+  // User & Role
+  userId          String
+  roleId          String
+  user            User     @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  role            Role     @relation("UserRole", fields: [roleId], references: [id], onDelete: Cascade)
+  
+  // Duration
+  assignedAt      DateTime @default(now())
+  expiresAt       DateTime?
+  
+  createdAt       DateTime @default(now())
+  
+  @@unique([userId, roleId])
+}
+
+model ActivityLog {
+  id              String   @id @default(cuid())
+  
+  // User Info
+  userId          String
+  userName        String
+  userEmail       String
+  
+  // Action
+  action          String   // created, updated, deleted, published, viewed, etc
+  actionType      String   // page, post, user, settings, etc
+  
+  // Details
+  resourceType    String   // what was changed
+  resourceId      String
+  resourceName    String
+  
+  // Changes
+  changes         String   @db.Text @default("{}")  // JSON
+  
+  // IP & Device
+  ipAddress       String   @default("")
+  userAgent       String   @default("")
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  
+  // User Info
+  userId          String
+  userName        String
+  
+  // Action
+  action          String
+  description     String   @db.Text
+  
+  // Status
+  status          String   @default("success")  // success, failed
+  
+  // Context
+  ipAddress       String
+  userAgent       String
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([userId, createdAt])
+}
+
+model PageBlock {
+  id              String   @id @default(cuid())
+  
+  // Page Info
+  pageId          String
+  pageTitle       String
+  
+  // Block Info
+  blockType       String   // hero, features, testimonials, cta, etc
+  blockName       String
+  
+  // Content
+  content         String   @db.Text @default("{}")  // JSON
+  
+  // Styling
+  cssClass        String   @default("")
+  customCSS       String   @db.Text @default("")
+  
+  // Order
+  order           Int      @default(0)
+  
+  // Status
+  published       Boolean  @default(false)
+  
+  // Editor Info
+  editedBy        String   @default("")
+  editedAt        DateTime @updatedAt
+  
+  createdAt       DateTime @default(now())
+}
+
+model PageVersion {
+  id              String   @id @default(cuid())
+  
+  // Page Info
+  pageId          String
+  
+  // Version
+  versionNumber   Int      @default(1)
+  
+  // Content
+  title           String
+  slug            String
+  content         String   @db.Text
+  metaDescription String   @default("")
+  
+  // Author
+  authorId        String
+  authorEmail     String
+  
+  // Status
+  status          String   @default("draft")  // draft, published, archived
+  
+  // Changes
+  changeLog       String   @db.Text @default("")
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([pageId, versionNumber])
+}
+
+model PageApproval {
+  id              String   @id @default(cuid())
+  
+  // Page Info
+  pageId          String
+  pageTitle       String
+  
+  // Submission
+  submittedBy     String
+  submittedAt     DateTime @default(now())
+  
+  // Approval
+  status          String   @default("pending")  // pending, approved, rejected
+  approvedBy      String?
+  approvalDate    DateTime?
+  
+  // Review
+  comments        String   @db.Text @default("")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+// PHASE 11 - ADDITIONAL CMS MODELS (unique to Phase 11)
+// ============================================================
+
+model BlogCategory {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  icon            String   @default("")
+  active          Boolean  @default(true)
+  order           Int      @default(0)
+  
+  posts           BlogPost[] @relation("CategoryPosts")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model BlogTag {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  slug            String   @unique
+  
+  posts           BlogPost[] @relation("TagPosts")
+  
+  createdAt       DateTime @default(now())
+}
+
+model TeamDepartment {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  icon            String   @default("")
+  active          Boolean  @default(true)
+  order           Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Gallery {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  images          String   @db.Text @default("[]")  // JSON array
+  columns         Int      @default(3)
+  lightbox        Boolean  @default(true)
+  published       Boolean  @default(false)
+  order           Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+// PHASE 12 - EMAIL MARKETING & AUTOMATION MODELS
+// ============================================================
+
+model EmailList {
+  id              String   @id @default(cuid())
+  
+  name            String
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  fromEmail       String
+  fromName        String   @default("Agency")
+  replyTo         String?
+  
+  subscriberCount Int      @default(0)
+  unsubscriberCount Int    @default(0)
+  
+  active          Boolean  @default(true)
+  
+  subscribers     EmailSubscriber[] @relation("ListSubscribers")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model EmailSubscriber {
+  id              String   @id @default(cuid())
+  
+  email           String
+  listId          String
+  list            EmailList @relation("ListSubscribers", fields: [listId], references: [id], onDelete: Cascade)
+  
+  firstName       String   @default("")
+  lastName        String   @default("")
+  tags            String   @db.Text @default("[]")
+  properties      String   @db.Text @default("{}")
+  
+  status          String   @default("subscribed")
+  verified        Boolean  @default(false)
+  verifiedAt      DateTime?
+  
+  lastEmailSentAt DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([email, listId])
+  @@index([listId, status])
+}
+
+model EmailTrack {
+  id              String   @id @default(cuid())
+  
+  campaignId      String
+  subscriberId    String
+  
+  sentAt          DateTime @default(now())
+  openedAt        DateTime?
+  clickedAt       DateTime?
+  bouncedAt       DateTime?
+  unsubscribedAt  DateTime?
+  
+  eventType       String   @default("sent")
+  linkClicked     String   @default("")
+  ipAddress       String   @default("")
+  userAgent       String   @db.Text @default("")
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([campaignId, subscriberId])
+  @@index([eventType])
+}
+
+model AutomationWorkflow {
+  id              String   @id @default(cuid())
+  
+  name            String
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  listId          String
+  triggerType     String
+  triggerValue    String   @default("")
+  
+  steps           String   @db.Text @default("[]")
+  
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model WorkflowStep {
+  id              String   @id @default(cuid())
+  
+  workflowId      String
+  
+  stepNumber      Int
+  stepType        String
+  
+  config          String   @db.Text @default("{}")
+  
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+}
+
+model LeadScore {
+  id              String   @id @default(cuid())
+  
+  subscriberId    String
+  email           String
+  
+  score           Int      @default(0)
+  
+  emailOpenScore  Int      @default(0)
+  emailClickScore Int      @default(0)
+  websiteVisitScore Int    @default(0)
+  purchaseScore   Int      @default(0)
+  engagementScore Int      @default(0)
+  
+  grade           String   @default("cold")
+  
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+}
+
+model EmailSegment {
+  id              String   @id @default(cuid())
+  
+  name            String
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  listId          String
+  
+  criteria        String   @db.Text @default("{}")
+  
+  subscriberCount Int      @default(0)
+  
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model UnsubscribeReason {
+  id              String   @id @default(cuid())
+  
+  subscriberId    String
+  campaignId      String?
+  email           String
+  
+  reason          String   @default("other")
+  feedback        String   @db.Text @default("")
+  
+  canResubscribe  Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+}
+
+// ============================================================
+
+
+// ============================================================
+// PHASE 13 - SOCIAL FEATURES & COMMUNITY
+// ============================================================
+
+model UserProfile {
+  id              String   @id @default(cuid())
+  
+  userId          String   @unique
+  user            User     @relation("UserProfiles", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Basic Info
+  displayName     String
+  bio             String   @db.Text @default("")
+  avatar          String   @default("")
+  coverImage      String   @default("")
+  
+  // Social
+  website         String   @default("")
+  socialLinks     String   @db.Text @default("{}")  // JSON
+  
+  // Stats
+  followersCount  Int      @default(0)
+  followingCount  Int      @default(0)
+  postsCount      Int      @default(0)
+  
+  // Engagement
+  totalLikes      Int      @default(0)
+  totalComments   Int      @default(0)
+  
+  // Gamification
+  points          Int      @default(0)
+  level           Int      @default(1)
+  badges          String   @db.Text @default("[]")  // JSON array
+  
+  // Preferences
+  isPublic        Boolean  @default(true)
+  allowMessaging  Boolean  @default(true)
+  
+  // Relations
+  followers       Follow[] @relation("FollowingUsers")
+  following       Follow[] @relation("FollowedUsers")
+  posts           Post[]
+  comments        Comment[]
+  reactions       Reaction[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Follow {
+  id              String   @id @default(cuid())
+  
+  followerId      String
+  follower        UserProfile @relation("FollowingUsers", fields: [followerId], references: [id], onDelete: Cascade)
+  
+  followingId     String
+  following       UserProfile @relation("FollowedUsers", fields: [followingId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime @default(now())
+  
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model Post {
+  id              String   @id @default(cuid())
+  
+  authorId        String
+  author          UserProfile @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Content
+  title           String   @db.Text
+  content         String   @db.Text
+  excerpt         String   @default("")
+  
+  // Media
+  images          String   @db.Text @default("[]")  // JSON array
+  videos          String   @db.Text @default("[]")  // JSON array
+  
+  // Meta
+  slug            String   @unique
+  metaDescription String   @default("")
+  metaKeywords    String   @default("")
+  
+  // Category/Tags
+  category        String   @default("general")
+  tags            String   @db.Text @default("[]")  // JSON array
+  
+  // Engagement
+  viewCount       Int      @default(0)
+  likesCount      Int      @default(0)
+  commentsCount   Int      @default(0)
+  sharesCount     Int      @default(0)
+  
+  // Status
+  published       Boolean  @default(true)
+  featured        Boolean  @default(false)
+  
+  // Relations
+  comments        Comment[]
+  reactions       Reaction[] @relation("PostReactions")
+  activityFeed    ActivityFeed[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  publishedAt     DateTime?
+  
+  @@index([authorId])
+  @@index([category])
+  @@index([published])
+}
+
+model Comment {
+  id              String   @id @default(cuid())
+  
+  postId          String
+  post            Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  authorId        String
+  author          UserProfile @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Content
+  content         String   @db.Text
+  
+  // Nesting
+  parentId        String?
+  parent          Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies         Comment[] @relation("CommentReplies")
+  
+  // Engagement
+  likesCount      Int      @default(0)
+  
+  // Status
+  approved        Boolean  @default(true)
+  
+  // Relations
+  reactions       Reaction[] @relation("CommentReactions")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([postId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+model Reaction {
+  id              String   @id @default(cuid())
+  
+  // Actor
+  userId          String
+  user            UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Target
+  postId          String?
+  post            Post?    @relation("PostReactions", fields: [postId], references: [id], onDelete: Cascade)
+  
+  commentId       String?
+  comment         Comment? @relation("CommentReactions", fields: [commentId], references: [id], onDelete: Cascade)
+  
+  // Type
+  type            String   @default("like")  // like, love, haha, wow, sad, angry
+  
+  createdAt       DateTime @default(now())
+  
+  @@unique([userId, postId, type])
+  @@unique([userId, commentId, type])
+  @@index([userId])
+  @@index([postId])
+  @@index([commentId])
+}
+
+model ActivityFeed {
+  id              String   @id @default(cuid())
+  
+  // User
+  userId          String
+  
+  // Post
+  postId          String
+  post            Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  // Activity Type
+  activityType    String   // post_published, post_liked, post_commented, user_followed, etc
+  
+  // Actor (who did the action)
+  actorId         String
+  actorName       String
+  
+  // Context
+  context         String   @db.Text @default("")  // JSON
+  
+  // Read Status
+  read            Boolean  @default(false)
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([userId, read])
+  @@index([postId])
+}
+
+model Badge {
+  id              String   @id @default(cuid())
+  
+  name            String   @unique
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  icon            String   @default("")
+  image           String   @default("")
+  
+  // Badge type
+  badgeType       String   // achievement, milestone, special, seasonal
+  
+  // Criteria
+  criteria        String   @db.Text @default("{}")  // JSON - how to earn
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Leaderboard {
+  id              String   @id @default(cuid())
+  
+  userId          String
+  userName        String
+  userAvatar      String   @default("")
+  
+  // Scores
+  totalPoints     Int      @default(0)
+  level           Int      @default(1)
+  
+  // Rankings
+  globalRank      Int      @default(0)
+  monthlyRank     Int      @default(0)
+  weeklyRank      Int      @default(0)
+  
+  // Last Updated
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  
+  @@unique([userId])
+  @@index([globalRank])
+  @@index([monthlyRank])
+}
+
+model Notification {
+  id              String   @id @default(cuid())
+  
+  userId          String
+  
+  // Content
+  title           String
+  message         String   @db.Text
+  type            String   // like, comment, follow, mention, message, system
+  
+  // Related
+  relatedUserId   String?
+  relatedPostId   String?
+  relatedLink     String   @default("")
+  
+  // Status
+  read            Boolean  @default(false)
+  readAt          DateTime?
+  
+  // Action
+  actionUrl       String   @default("")
+  actionLabel     String   @default("")
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([userId, read])
+  @@index([type])
+}
+
+model Message {
+  id              String   @id @default(cuid())
+  
+  // Participants
+  senderId        String
+  senderName      String
+  senderAvatar    String   @default("")
+  
+  recipientId     String
+  
+  // Content
+  content         String   @db.Text
+  
+  // Attachments
+  attachments     String   @db.Text @default("[]")  // JSON array
+  
+  // Status
+  read            Boolean  @default(false)
+  readAt          DateTime?
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([read])
+}
+
+model HashTag {
+  id              String   @id @default(cuid())
+  
+  name            String   @unique
+  slug            String   @unique
+  
+  // Usage
+  useCount        Int      @default(0)
+  
+  // Meta
+  description     String   @default("")
+  featured        Boolean  @default(false)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ShareLog {
+  id              String   @id @default(cuid())
+  
+  postId          String
+  
+  // Share Info
+  platform        String   // twitter, facebook, linkedin, email, link, etc
+  sharedBy        String   // user ID
+  sharedByName    String
+  
+  // Tracking
+  ipAddress       String   @default("")
+  userAgent       String   @db.Text @default("")
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([postId])
+  @@index([platform])
+}
+
+// ============================================================
+
+
+// ============================================================
+// PHASE 14 - INTEGRATIONS HUB
+// ============================================================
+
+model Integration {
+  id              String   @id @default(cuid())
+  
+  name            String   @unique
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Integration Type
+  type            String   // slack, discord, zapier, google-ads, facebook, webhook, etc
+  category        String   // communication, automation, ads, analytics, crm, etc
+  
+  // Configuration
+  config          String   @db.Text @default("{}")  // JSON
+  credentials     String   @db.Text @default("{}")  // JSON (encrypted)
+  
+  // Status
+  active          Boolean  @default(true)
+  connected       Boolean  @default(false)
+  connectedAt     DateTime?
+  
+  // Rate Limiting
+  requestLimit    Int      @default(1000)
+  requestCount    Int      @default(0)
+  resetAt         DateTime @default(now())
+  
+  // Relations
+  webhooks        Webhook[]
+  logs            IntegrationLog[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model IntegrationLog {
+  id              String   @id @default(cuid())
+  
+  integrationId   String
+  integration     Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  
+  // Log Details
+  action          String   // sync, send, receive, error
+  status          String   // success, failed, pending
+  
+  // Data
+  requestData     String   @db.Text @default("{}")   // JSON
+  responseData    String   @db.Text @default("{}")   // JSON
+  errorMessage    String   @default("")
+  
+  // Tracking
+  duration        Int      @default(0)  // milliseconds
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([integrationId, status])
+}
+
+model Webhook {
+  id              String   @id @default(cuid())
+  
+  integrationId   String
+  integration     Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  
+  // Webhook Details
+  url             String   @unique
+  event           String   // post_created, order_received, user_signed_up, etc
+  
+  // Security
+  secret          String
+  headers         String   @db.Text @default("{}")  // JSON
+  
+  // Config
+  active          Boolean  @default(true)
+  retryCount      Int      @default(3)
+  
+  // Stats
+  lastTriggeredAt DateTime?
+  deliveredCount  Int      @default(0)
+  failedCount     Int      @default(0)
+  
+  // Relations
+  events          WebhookEvent[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([integrationId])
+  @@index([event])
+}
+
+model WebhookEvent {
+  id              String   @id @default(cuid())
+  
+  webhookId       String
+  webhook         Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  
+  // Event Details
+  event           String
+  data            String   @db.Text  // JSON payload
+  
+  // Delivery
+  status          String   @default("pending")  // pending, delivered, failed
+  attempts        Int      @default(0)
+  lastAttemptAt   DateTime?
+  
+  // Response
+  responseCode    Int?
+  responseBody    String   @db.Text @default("")
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([webhookId, status])
+}
+
+model APIKey {
+  id              String   @id @default(cuid())
+  
+  name            String
+  slug            String   @unique
+  
+  // Key
+  key             String   @unique
+  secret          String   // hashed
+  
+  // Permissions
+  scopes          String   @db.Text @default("[]")  // JSON array
+  
+  // Rate Limiting
+  rateLimit       Int      @default(1000)
+  ratePeriod      String   @default("hour")  // minute, hour, day
+  
+  // Stats
+  lastUsedAt      DateTime?
+  callCount       Int      @default(0)
+  
+  // Status
+  active          Boolean  @default(true)
+  expiresAt       DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SlackIntegration {
+  id              String   @id @default(cuid())
+  
+  workspaceId     String   @unique
+  workspaceName   String
+  
+  // OAuth
+  accessToken     String
+  refreshToken    String?
+  tokenExpiresAt  DateTime?
+  
+  // Config
+  channels        String   @db.Text @default("[]")  // JSON
+  notifyTypes     String   @db.Text @default("[]")  // JSON
+  
+  // Sync
+  lastSyncAt      DateTime?
+  syncEnabled     Boolean  @default(true)
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model DiscordIntegration {
+  id              String   @id @default(cuid())
+  
+  serverId        String   @unique
+  serverName      String
+  
+  // OAuth
+  botToken        String
+  
+  // Config
+  channels        String   @db.Text @default("[]")  // JSON
+  notifyTypes     String   @db.Text @default("[]")  // JSON
+  prefix          String   @default("!")
+  
+  // Sync
+  lastSyncAt      DateTime?
+  syncEnabled     Boolean  @default(true)
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model GoogleAdsIntegration {
+  id              String   @id @default(cuid())
+  
+  customerId      String   @unique
+  
+  // OAuth
+  accessToken     String
+  refreshToken    String
+  tokenExpiresAt  DateTime?
+  
+  // Config
+  campaignIds     String   @db.Text @default("[]")  // JSON
+  conversionId    String   @default("")
+  
+  // Sync
+  lastSyncAt      DateTime?
+  autoSync        Boolean  @default(true)
+  syncInterval    Int      @default(3600)  // seconds
+  
+  // Stats
+  totalSpend      Float    @default(0)
+  totalConversions Int     @default(0)
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model FacebookIntegration {
+  id              String   @id @default(cuid())
+  
+  pageId          String   @unique
+  pageName        String
+  
+  // OAuth
+  accessToken     String
+  
+  // Config
+  pixelId         String   @default("")
+  conversions     String   @db.Text @default("[]")  // JSON
+  
+  // Sync
+  lastSyncAt      DateTime?
+  autoSync        Boolean  @default(true)
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ZapierAutomation {
+  id              String   @id @default(cuid())
+  
+  name            String
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Zapier Config
+  zapierAppId     String
+  trigger         String   // event type
+  actions         String   @db.Text @default("[]")  // JSON array of actions
+  
+  // Conditions
+  conditions      String   @db.Text @default("{}")  // JSON
+  
+  // Execution
+  lastRunAt       DateTime?
+  runCount        Int      @default(0)
+  
+  // Status
+  active          Boolean  @default(true)
+  enabled         Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ExternalAPI {
+  id              String   @id @default(cuid())
+  
+  name            String   @unique
+  slug            String   @unique
+  
+  // API Details
+  baseUrl         String
+  apiVersion      String   @default("v1")
+  
+  // Authentication
+  authType        String   // none, api-key, oauth, basic
+  credentials     String   @db.Text @default("{}")  // JSON (encrypted)
+  
+  // Config
+  headers         String   @db.Text @default("{}")  // JSON
+  timeout         Int      @default(30000)  // milliseconds
+  
+  // Rate Limiting
+  rateLimit       Int      @default(1000)
+  ratePeriod      String   @default("hour")
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  // Health
+  lastHealthCheck DateTime?
+  isHealthy       Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model DataSync {
+  id              String   @id @default(cuid())
+  
+  sourceType      String   // integration, external-api, webhook
+  sourceId        String
+  
+  destinationType String   // database, external-api, integration
+  destinationId   String
+  
+  // Sync Config
+  frequency       String   @default("manual")  // manual, hourly, daily, weekly
+  lastSyncAt      DateTime?
+  nextSyncAt      DateTime?
+  
+  // Mapping
+  fieldMapping    String   @db.Text @default("{}")  // JSON
+  filters         String   @db.Text @default("{}")  // JSON
+  
+  // Stats
+  totalSynced     Int      @default(0)
+  lastSyncCount   Int      @default(0)
+  
+  // Status
+  active          Boolean  @default(true)
+  status          String   @default("idle")  // idle, syncing, error
+  errorMessage    String   @default("")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ============================================================
+
+
+// ============================================================
+// PHASE 15 - ADVANCED REPORTING & BI
+// ============================================================
+
+model Report {
+  id              String   @id @default(cuid())
+  
+  name            String
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Report Type
+  type            String   // sales, analytics, customers, revenue, etc
+  category        String   // custom, predefined, template
+  
+  // Configuration
+  config          String   @db.Text @default("{}")  // JSON
+  
+  // Data Source
+  dataSource      String   // database, api, integration
+  query           String   @db.Text @default("")
+  
+  // Filters & Parameters
+  filters         String   @db.Text @default("{}")  // JSON
+  parameters      String   @db.Text @default("[]")  // JSON array
+  
+  // Scheduling
+  scheduled       Boolean  @default(false)
+  frequency       String   @default("manual")  // manual, daily, weekly, monthly
+  nextRunAt       DateTime?
+  
+  // Recipients
+  recipients      String   @db.Text @default("[]")  // JSON array
+  
+  // Stats
+  viewCount       Int      @default(0)
+  lastViewedAt    DateTime?
+  lastGeneratedAt DateTime?
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  // Relations
+  dashboards      Dashboard[]
+  exports         ReportExport[]
+  schedules       ReportSchedule[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Dashboard {
+  id              String   @id @default(cuid())
+  
+  name            String   @unique
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Dashboard Type
+  type            String   // custom, sales, marketing, analytics, etc
+  
+  // Layout & Design
+  layout          String   @db.Text @default("{}")  // JSON - grid layout
+  theme           String   @default("light")
+  
+  // Widgets
+  widgets         String   @db.Text @default("[]")  // JSON array
+  
+  // Filters
+  filters         String   @db.Text @default("{}")  // JSON
+  
+  // Data Refresh
+  refreshInterval Int      @default(300)  // seconds
+  
+  // Access
+  isPublic        Boolean  @default(false)
+  shareToken      String   @unique @default(cuid())
+  
+  // Stats
+  viewCount       Int      @default(0)
+  lastViewedAt    DateTime?
+  
+  // Reports
+  reports         Report[]
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+
+// ============================================================
+// PHASE 16 - MULTI-LANGUAGE SUPPORT
+// ============================================================
+
+model Language {
+  id              String   @id @default(cuid())
+  
+  name            String   @unique
+  code            String   @unique  // en, bn, es, fr, de, ar, etc
+  nativeName      String   // English, Bangla, Español, etc
+  
+  // Language Direction
+  direction       String   @default("ltr")  // ltr, rtl
+  
+  // Region
+  region          String   @default("")  // US, UK, IN, BD, etc
+  flag            String   @default("")  // 🇺🇸, 🇧🇩, etc
+  
+  // Status
+  active          Boolean  @default(true)
+  default         Boolean  @default(false)
+  
+  // Stats
+  translated      Int      @default(0)  // % translated
+  
+  // Relations
+  translations    Translation[]
+  users           User[] @relation("userLanguage")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Translation {
+  id              String   @id @default(cuid())
+  
+  languageId      String
+  language        Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+  
+  // Translation Key
+  key             String
+  namespace       String   // common, pages, errors, etc
+  
+  // Content
+  value           String   @db.Text
+  
+  // Metadata
+  context         String   @default("")  // context for translator
+  pluralKey       String   @default("")  // for plural forms
+  
+  // Status
+  translated      Boolean  @default(false)
+  reviewed        Boolean  @default(false)
+  
+  // Machine Translation
+  machineTranslated Boolean @default(false)
+  machineValue    String   @db.Text @default("")
+  
+  // Tracking
+  lastUpdatedBy   String   @default("")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([languageId, key, namespace])
+  @@index([languageId, namespace])
+}
+
+model TranslationKey {
+  id              String   @id @default(cuid())
+  
+  key             String   @unique
+  namespace       String   // common, pages, errors, settings
+  
+  // Description
+  description     String   @db.Text @default("")
+  context         String   @db.Text @default("")
+  
+  // Default Value (English)
+  defaultValue    String   @db.Text
+  
+  // Category
+  category        String   @default("general")
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model LocalizationConfig {
+  id              String   @id @default(cuid())
+  
+  // Default Language
+  defaultLanguage String
+  
+  // Supported Languages
+  supportedLanguages String @db.Text @default("[]")  // JSON array
+  
+  // Auto-Detection
+  detectBrowser   Boolean  @default(true)
+  detectIP        Boolean  @default(false)
+  
+  // RTL Support
+  rtlLanguages    String   @db.Text @default("[]")  // JSON array
+  
+  // Translation Service
+  translationService String @default("none")  // none, google, deepl, openai
+  serviceKey      String   @default("")
+  serviceSecret   String   @default("")
+  
+  // Fallback Language
+  fallbackLanguage String @default("en")
+  
+  // Settings
+  cacheTranslations Boolean @default(true)
+  autoTranslate   Boolean  @default(false)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model TranslationFile {
+  id              String   @id @default(cuid())
+  
+  // File Details
+  fileName        String
+  filePath        String   @db.Text
+  fileSize        Int
+  fileType        String   // json, yaml, po, etc
+  
+  // Language
+  languageId      String
+  namespace       String
+  
+  // Status
+  status          String   @default("pending")  // pending, processing, completed, failed
+  
+  // Import/Export
+  action          String   // import, export
+  
+  // Error handling
+  errorMessage    String   @default("")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model LanguageSwitch {
+  id              String   @id @default(cuid())
+  
+  userId          String
+  
+  // Language History
+  previousLanguage String @default("en")
+  currentLanguage String
+  
+  // Tracking
+  switchedAt      DateTime @default(now())
+  
+  @@index([userId])
+}
+
+model LocaleOverride {
+  id              String   @id @default(cuid())
+  
+  // Target
+  languageId      String
+  key             String
+  
+  // Override
+  value           String   @db.Text
+  
+  // Priority
+  priority        Int      @default(0)
+  
+  // Active
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([languageId, key])
+}
+
+model TextDirection {
+  id              String   @id @default(cuid())
+  
+  languageCode    String   @unique
+  
+  // Direction
+  direction       String   // ltr, rtl
+  
+  // Typography
+  textAlign       String   @default("auto")
+  
+  // Spacing
+  marginDirection String   @default("auto")
+  
+  // Navigation
+  navDirection    String   @default("auto")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model DateTimeFormat {
+  id              String   @id @default(cuid())
+  
+  languageCode    String   @unique
+  
+  // Date Format
+  dateFormat      String   @default("MM/DD/YYYY")
+  timeFormat      String   @default("HH:mm:ss")
+  dateTimeFormat  String   @default("MM/DD/YYYY HH:mm:ss")
+  
+  // Number Format
+  decimalSeparator String @default(".")
+  thousandsSeparator String @default(",")
+  
+  // Currency
+  currencySymbol  String   @default("$")
+  currencyCode    String   @default("USD")
+  
+  // Week
+  firstDayOfWeek  Int      @default(0)  // 0=Sunday, 1=Monday
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model TranslationMemory {
+  id              String   @id @default(cuid())
+  
+  // Source & Target
+  sourceLanguage  String
+  targetLanguage  String
+  
+  // Content
+  sourceText      String   @db.Text
+  targetText      String   @db.Text
+  
+  // Metadata
+  context         String   @default("")
+  domain          String   @default("")  // general, technical, marketing, etc
+  
+  // Quality
+  quality         Float    @default(0.8)  // 0-1 score
+  usage           Int      @default(1)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([sourceLanguage, targetLanguage])
+}
+
+model LanguageTeam {
+  id              String   @id @default(cuid())
+  
+  languageId      String
+  
+  // Team
+  translators     String   @db.Text @default("[]")  // JSON array of user IDs
+  reviewers       String   @db.Text @default("[]")
+  manager         String   @default("")
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([languageId])
+}
+
+// ============================================================
+
+
+// ============================================================
+// PHASE 17 - ADVANCED CMS & PAGE BUILDER
+// ============================================================
+
+model Page {
+  id              String   @id @default(cuid())
+  
+  title           String
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Content
+  content         String   @db.Text @default("")
+  
+  // Layout
+  templateId      String?
+  template        PageTemplate? @relation(fields: [templateId], references: [id])
+  
+  // Builder Config
+  blocks          String   @db.Text @default("[]")  // JSON array
+  layout          String   @db.Text @default("{}")  // JSON
+  
+  // SEO
+  seoTitle        String   @default("")
+  seoDescription  String   @db.Text @default("")
+  seoKeywords     String   @db.Text @default("[]")  // JSON array
+  ogImage         String   @default("")
+  canonical       String   @default("")
+  
+  // Publishing
+  status          String   @default("draft")  // draft, published, archived
+  publishedAt     DateTime?
+  
+  // Versions
+  version         Int      @default(1)
+  parentPageId    String?  // For versioning
+  
+  // Stats
+  viewCount       Int      @default(0)
+  
+  // Settings
+  featured        Boolean  @default(false)
+  category        String   @default("general")
+  
+  // Relations
+  blocks_rel      ContentBlock[]
+  versions        PageVersion[]
+  seoData         SEOData[]
+  abTests         ABTest[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model PageTemplate {
+  id              String   @id @default(cuid())
+  
+  name            String   @unique
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Template Structure
+  structure       String   @db.Text @default("{}")  // JSON
+  blocks          String   @db.Text @default("[]")  // JSON
+  
+  // Category
+  category        String   @default("general")  // landing, blog, portfolio, etc
+  
+  // Preview
+  previewImage    String   @default("")
+  
+  // Usage
+  useCount        Int      @default(0)
+  
+  // Status
+  active          Boolean  @default(true)
+  featured        Boolean  @default(false)
+  
+  // Relations
+  pages           Page[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ContentBlock {
+  id              String   @id @default(cuid())
+  
+  pageId          String
+  page            Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  
+  // Block Type
+  type            String   // text, image, video, hero, cta, gallery, etc
+  
+  // Content
+  content         String   @db.Text @default("")  // JSON
+  
+  // Position
+  position        Int      @default(0)
+  
+  // Settings
+  settings        String   @db.Text @default("{}")  // JSON
+  
+  // Styling
+  styling         String   @db.Text @default("{}")  // JSON (custom CSS)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([pageId])
+}
+
+model PageVersion {
+  id              String   @id @default(cuid())
+  
+  pageId          String
+  page            Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  
+  // Version Info
+  version         Int
+  title           String
+  
+  // Content Snapshot
+  content         String   @db.Text
+  blocks          String   @db.Text @default("[]")  // JSON
+  
+  // Metadata
+  changedBy       String
+  changeLog       String   @db.Text @default("")
+  
+  // Comparison
+  isDraft         Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([pageId])
+}
+
+model SEOData {
+  id              String   @id @default(cuid())
+  
+  pageId          String
+  page            Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  
+  // Meta Tags
+  title           String
+  description     String   @db.Text
+  keywords        String   @db.Text @default("[]")  // JSON array
+  
+  // Open Graph
+  ogTitle         String   @default("")
+  ogDescription   String   @db.Text @default("")
+  ogImage         String   @default("")
+  ogUrl           String   @default("")
+  ogType          String   @default("website")
+  
+  // Twitter Card
+  twitterCard     String   @default("summary")
+  twitterSite     String   @default("")
+  twitterAuthor   String   @default("")
+  
+  // Canonical
+  canonical       String   @default("")
+  
+  // Structured Data
+  structuredData  String   @db.Text @default("{}")  // JSON-LD
+  
+  // Mobile
+  viewport        String   @default("width=device-width, initial-scale=1")
+  
+  // Tracking
+  analyticsCode   String   @default("")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([pageId])
+}
+
+model ABTest {
+  id              String   @id @default(cuid())
+  
+  pageId          String
+  page            Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  
+  // Test Details
+  name            String
+  description     String   @db.Text @default("")
+  
+  // Variants
+  controlVariant  String   // Page ID or content
+  testVariants    String   @db.Text @default("[]")  // JSON array
+  
+  // Configuration
+  trafficSplit    String   @db.Text @default("{}")  // JSON
+  
+  // Metrics
+  metric          String   // clicks, conversions, time_on_page
+  
+  // Status
+  status          String   @default("draft")  // draft, running, paused, completed
+  
+  // Timing
+  startDate       DateTime?
+  endDate         DateTime?
+  
+  // Results
+  winner          String   @default("")
+  confidence      Float    @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([pageId, status])
+}
+
+model BlockLibrary {
+  id              String   @id @default(cuid())
+  
+  name            String   @unique
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Block Type
+  type            String
+  
+  // Template
+  template        String   @db.Text @default("{}")  // JSON
+  
+  // Preview
+  previewImage    String   @default("")
+  
+  // Category
+  category        String   @default("general")
+  
+  // Usage
+  useCount        Int      @default(0)
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model PageCategory {
+  id              String   @id @default(cuid())
+  
+  name            String   @unique
+  slug            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Icon
+  icon            String   @default("")
+  
+  // Order
+  order           Int      @default(0)
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SiteMap {
+  id              String   @id @default(cuid())
+  
+  // URL
+  url             String   @unique
+  
+  // Meta
+  changeFreq      String   @default("weekly")  // always, hourly, daily, weekly, monthly, yearly
+  priority        Float    @default(0.5)  // 0.0 - 1.0
+  lastMod         DateTime @default(now())
+  
+  // Type
+  type            String   @default("page")  // page, category, tag
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model PageAnalytics {
+  id              String   @id @default(cuid())
+  
+  pageId          String
+  
+  // Metrics
+  views           Int      @default(0)
+  uniqueVisitors  Int      @default(0)
+  bounceRate      Float    @default(0)
+  avgTimeOnPage   Float    @default(0)
+  conversions     Int      @default(0)
+  
+  // Referrers
+  topReferrers    String   @db.Text @default("[]")  // JSON
+  
+  // Date
+  date            DateTime
+  
+  @@index([pageId, date])
+}
+
+// ============================================================
+
+
+// ============================================================
+// PHASE 18 - AUTOMATION & WORKFLOWS
+// ============================================================
+
+model Workflow {
+  id              String   @id @default(cuid())
+  
+  name            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Workflow Configuration
+  triggers        String   @db.Text @default("[]")  // JSON array
+  actions         String   @db.Text @default("[]")  // JSON array
+  conditions      String   @db.Text @default("[]")  // JSON array
+  
+  // Settings
+  enabled         Boolean  @default(true)
+  active          Boolean  @default(false)
+  
+  // Category
+  category        String   @default("general")  // email, lead, sales, etc
+  
+  // Execution
+  execCount       Int      @default(0)
+  lastExecAt      DateTime?
+  
+  // Relations
+  triggers_rel    WorkflowTrigger[]
+  actions_rel     WorkflowAction[]
+  executions      WorkflowExecution[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model WorkflowTrigger {
+  id              String   @id @default(cuid())
+  
+  workflowId      String
+  workflow        Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  
+  // Trigger Type
+  type            String   // form_submission, user_signup, lead_created, etc
+  
+  // Configuration
+  config          String   @db.Text @default("{}")  // JSON
+  
+  // Conditions
+  conditions      String   @db.Text @default("[]")  // JSON array
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([workflowId])
+}
+
+model WorkflowAction {
+  id              String   @id @default(cuid())
+  
+  workflowId      String
+  workflow        Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  
+  // Action Type
+  type            String   // send_email, create_task, assign_lead, etc
+  
+  // Configuration
+  config          String   @db.Text @default("{}")  // JSON
+  
+  // Delay
+  delayMs         Int      @default(0)
+  
+  // Order
+  position        Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([workflowId])
+}
+
+model WorkflowExecution {
+  id              String   @id @default(cuid())
+  
+  workflowId      String
+  workflow        Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  
+  // Trigger Context
+  triggerData     String   @db.Text @default("{}")  // JSON
+  
+  // Execution Status
+  status          String   @default("pending")  // pending, running, success, failed
+  
+  // Error Handling
+  errorMessage    String   @default("")
+  
+  // Execution Time
+  startedAt       DateTime?
+  completedAt     DateTime?
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([workflowId, status])
+}
+
+model Schedule {
+  id              String   @id @default(cuid())
+  
+  // Task Details
+  name            String
+  description     String   @db.Text @default("")
+  
+  // Action
+  action          String   // email_send, report_generate, cleanup, etc
+  actionConfig    String   @db.Text @default("{}")  // JSON
+  
+  // Schedule
+  frequency       String   // once, daily, weekly, monthly, custom
+  cronExpression  String   @default("")
+  
+  // Timing
+  nextRunAt       DateTime
+  lastRunAt       DateTime?
+  
+  // Status
+  enabled         Boolean  @default(true)
+  running         Boolean  @default(false)
+  
+  // Stats
+  execCount       Int      @default(0)
+  successCount    Int      @default(0)
+  failureCount    Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([nextRunAt])
+}
+
+model ScheduledExecution {
+  id              String   @id @default(cuid())
+  
+  scheduleId      String
+  
+  // Execution Details
+  status          String   @default("pending")  // pending, running, success, failed
+  
+  // Results
+  result          String   @db.Text @default("")  // JSON
+  errorMessage    String   @default("")
+  
+  // Timing
+  startedAt       DateTime?
+  completedAt     DateTime?
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([scheduleId, status])
+}
+
+model EmailAutomation {
+  id              String   @id @default(cuid())
+  
+  // Campaign Details
+  name            String   @unique
+  subject         String
+  
+  // Content
+  htmlContent     String   @db.Text
+  textContent     String   @db.Text
+  
+  // Trigger
+  triggerType     String   // signup, abandoned_cart, purchase, etc
+  
+  // Timing
+  delaySeconds    Int      @default(0)
+  
+  // Recipients
+  recipientFilter String   @db.Text @default("{}")  // JSON
+  
+  // Personalization
+  variables       String   @db.Text @default("[]")  // JSON array
+  
+  // Status
+  enabled         Boolean  @default(true)
+  
+  // Stats
+  sentCount       Int      @default(0)
+  openCount       Int      @default(0)
+  clickCount      Int      @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model LeadScore {
+  id              String   @id @default(cuid())
+  
+  leadId          String
+  
+  // Scoring
+  score           Int      @default(0)
+  
+  // Breakdown
+  activities      Int      @default(0)
+  engagement      Int      @default(0)
+  behavior        Int      @default(0)
+  
+  // Status
+  stage           String   @default("cold")  // cold, warm, hot, qualified
+  
+  // Last Updated
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([leadId])
+  @@index([score, stage])
+}
+
+model LeadScoringRule {
+  id              String   @id @default(cuid())
+  
+  // Rule Details
+  name            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Trigger
+  triggerType     String   // email_open, link_click, page_visit, etc
+  
+  // Score
+  scoreValue      Int
+  
+  // Conditions
+  conditions      String   @db.Text @default("[]")  // JSON array
+  
+  // Active
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model PipelineStage {
+  id              String   @id @default(cuid())
+  
+  // Stage Details
+  name            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Probability
+  probability     Int      @default(50)  // 0-100
+  
+  // Order
+  order           Int      @default(0)
+  
+  // Rules
+  autoAdvance     Boolean  @default(false)
+  advanceCondition String  @db.Text @default("{}")  // JSON
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model DealPipeline {
+  id              String   @id @default(cuid())
+  
+  dealId          String
+  
+  // Current Stage
+  currentStage    String
+  
+  // Progress
+  progress        Int      @default(0)  // 0-100
+  
+  // Timings
+  enteredAt       DateTime @default(now())
+  lastMovedAt     DateTime @updatedAt
+  
+  // Notes
+  notes           String   @db.Text @default("")
+  
+  @@index([dealId])
+}
+
+model Automation {
+  id              String   @id @default(cuid())
+  
+  // Details
+  name            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Type
+  type            String   // workflow, email, lead_score, pipeline
+  
+  // Reference
+  refId           String   // workflow/automation ID
+  
+  // Status
+  enabled         Boolean  @default(true)
+  
+  // Stats
+  execCount       Int      @default(0)
+  lastExecAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AutomationLog {
+  id              String   @id @default(cuid())
+  
+  automationId    String
+  
+  // Action
+  action          String
+  
+  // Context
+  context         String   @db.Text @default("{}")  // JSON
+  
+  // Result
+  status          String   @default("pending")  // pending, success, failed
+  errorMessage    String   @default("")
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([automationId])
+}
+
+// ============================================================
+
+
+// ============================================================
+// PHASE 19 - ADVANCED SECURITY & COMPLIANCE
+// ============================================================
+
+model SecurityPolicy {
+  id              String   @id @default(cuid())
+  
+  // Policy Details
+  name            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Password Policy
+  minLength       Int      @default(12)
+  requireUppercase Boolean @default(true)
+  requireLowercase Boolean @default(true)
+  requireNumbers  Boolean  @default(true)
+  requireSpecial  Boolean  @default(true)
+  expiryDays      Int      @default(90)
+  
+  // Session Policy
+  sessionTimeout  Int      @default(3600)  // seconds
+  maxSessions     Int      @default(5)
+  
+  // Login Policy
+  maxFailedLogins Int      @default(5)
+  lockoutDuration Int      @default(1800)  // seconds
+  
+  // Two Factor
+  twoFactorRequired Boolean @default(false)
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AuditTrail {
+  id              String   @id @default(cuid())
+  
+  // User
+  userId          String
+  userName        String   @default("")
+  
+  // Action
+  action          String   // create, read, update, delete
+  entityType      String   // User, Page, Workflow, etc
+  entityId        String
+  
+  // Details
+  description     String   @db.Text @default("")
+  changes         String   @db.Text @default("{}")  // JSON - old vs new
+  
+  // IP & Device
+  ipAddress       String   @default("")
+  userAgent       String   @db.Text @default("")
+  
+  // Status
+  status          String   @default("success")  // success, failure
+  errorMessage    String   @default("")
+  
+  // Timestamp
+  createdAt       DateTime @default(now())
+  
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model ComplianceLog {
+  id              String   @id @default(cuid())
+  
+  // Compliance Type
+  type            String   // gdpr, hipaa, soc2, ccpa
+  
+  // Requirement
+  requirement     String
+  description     String   @db.Text @default("")
+  
+  // Status
+  status          String   @default("pending")  // pending, compliant, non-compliant
+  
+  // Evidence
+  evidence        String   @db.Text @default("")  // JSON
+  
+  // Dates
+  checkDate       DateTime @default(now())
+  nextCheckDate   DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model EncryptionKey {
+  id              String   @id @default(cuid())
+  
+  // Key Details
+  name            String   @unique
+  keyType         String   // aes-256, rsa-2048, etc
+  
+  // Key Material (encrypted)
+  encryptedKey    String   @db.Text
+  
+  // Key Info
+  algorithm       String
+  keySize        Int
+  
+  // Rotation
+  createdAt       DateTime @default(now())
+  rotatedAt       DateTime?
+  nextRotation    DateTime?
+  
+  // Status
+  active          Boolean  @default(true)
+  
+  updatedAt       DateTime @updatedAt
+}
+
+model DataBackup {
+  id              String   @id @default(cuid())
+  
+  // Backup Details
+  name            String
+  backupType      String   // full, incremental, differential
+  
+  // Scope
+  scope           String   // database, files, all
+  
+  // Storage
+  storagePath     String   @db.Text
+  storageProvider String   // s3, gcs, azure
+  
+  // Size
+  sizeBytes       BigInt   @default(0)
+  
+  // Status
+  status          String   @default("pending")  // pending, running, success, failed
+  
+  // Encryption
+  encrypted       Boolean  @default(true)
+  
+  // Retention
+  retentionDays   Int      @default(30)
+  
+  // Timing
+  startedAt       DateTime?
+  completedAt     DateTime?
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([createdAt])
+}
+
+model DataRecovery {
+  id              String   @id @default(cuid())
+  
+  backupId        String
+  
+  // Recovery Details
+  scope           String   // full, partial
+  
+  // Status
+  status          String   @default("pending")  // pending, running, success, failed
+  
+  // Timing
+  startedAt       DateTime?
+  completedAt     DateTime?
+  
+  // Result
+  errorMessage    String   @default("")
+  
+  createdAt       DateTime @default(now())
+}
+
+model GDPRRequest {
+  id              String   @id @default(cuid())
+  
+  // User
+  userId          String
+  email           String
+  
+  // Request Type
+  type            String   // access, deletion, portability, rectification
+  
+  // Request Details
+  description     String   @db.Text @default("")
+  
+  // Status
+  status          String   @default("pending")  // pending, in_progress, completed, denied
+  
+  // Processing
+  processedBy      String   @default("")
+  processedAt     DateTime?
+  
+  // Deadline
+  deadline        DateTime
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([userId, status])
+}
+
+model DataClassification {
+  id              String   @id @default(cuid())
+  
+  // Data Details
+  name            String   @unique
+  description     String   @db.Text @default("")
+  
+  // Classification
+  level           String   // public, internal, confidential, restricted
+  
+  // Handling Requirements
+  encryptionRequired Boolean @default(false)
+  accessControl   String   @db.Text @default("[]")  // JSON array
+  
+  // Retention
+  retentionDays   Int      @default(0)  // 0 = indefinite
+  
+  // Audit
+  auditRequired   Boolean  @default(false)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model PasswordPolicy {
+  id              String   @id @default(cuid())
+  
+  userId          String   @unique
+  
+  // Password History
+  lastChangedAt   DateTime @default(now())
+  lastPassword    String   @default("")  // hashed previous password
+  
+  // Failed Attempts
+  failedAttempts  Int      @default(0)
+  lastFailedAt    DateTime?
+  
+  // Locked
+  lockedUntil     DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([lockedUntil])
+}
+
+model TwoFactorAuth {
+  id              String   @id @default(cuid())
+  
+  userId          String   @unique
+  
+  // 2FA Method
+  method          String   // email, sms, totp, backup
+  
+  // Secret (encrypted)
+  secret          String   @db.Text
+  
+  // Backup Codes
+  backupCodes     String   @db.Text @default("[]")  // JSON array (hashed)
+  
+  // Status
+  enabled         Boolean  @default(false)
+  verified        Boolean  @default(false)
+  
+  // Last Used
+  lastUsedAt      DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SecurityEvent {
+  id              String   @id @default(cuid())
+  
+  // Event Type
+  type            String   // failed_login, unauthorized_access, suspicious_activity, etc
+  
+  // User
+  userId          String?
+  ipAddress       String
+  
+  // Details
+  description     String   @db.Text
+  
+  // Severity
+  severity        String   // low, medium, high, critical
+  
+  // Status
+  status          String   @default("new")  // new, acknowledged, resolved
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([userId])
+  @@index([type, severity])
+}
+
+model APIRateLimit {
+  id              String   @id @default(cuid())
+  
+  // API Key
+  apiKeyId        String
+  
+  // Limits
+  requestsPerMinute Int   @default(60)
+  requestsPerHour Int    @default(1000)
+  requestsPerDay  Int    @default(10000)
+  
+  // Current Usage
+  minuteCount     Int    @default(0)
+  hourCount       Int    @default(0)
+  dayCount        Int    @default(0)
+  
+  // Reset Times
+  minuteResetAt   DateTime @default(now())
+  hourResetAt     DateTime @default(now())
+  dayResetAt      DateTime @default(now())
+  
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([apiKeyId])
+}
+
+model SecurityMetric {
+  id              String   @id @default(cuid())
+  
+  // Metric Date
+  date            DateTime
+  
+  // Metrics
+  loginAttempts   Int      @default(0)
+  failedLogins    Int      @default(0)
+  accountsLocked  Int      @default(0)
+  
+  // Security Events
+  suspiciousActivities Int @default(0)
+  breachAttempts  Int      @default(0)
+  
+  // Audit
+  auditEvents     Int      @default(0)
+  
+  // Compliance
+  complianceIssues Int     @default(0)
+  
+  createdAt       DateTime @default(now())
+  
+  @@unique([date])
+  @@index([date])
+}
+
+model ComplianceReport {
+  id              String   @id @default(cuid())
+  
+  // Report Details
+  name            String
+  type            String   // gdpr, hipaa, soc2, ccpa
+  
+  // Period
+  startDate       DateTime
+  endDate         DateTime
+  
+  // Status
+  status          String   // compliant, non_compliant, partial
+  
+  // Content
+  findings        String   @db.Text @default("")  // JSON
+  recommendations String   @db.Text @default("")  // JSON
+  
+  // Generated
+  generatedBy     String
+  generatedAt     DateTime @default(now())
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([type, endDate])
+}
+
+// ============================================================
+
