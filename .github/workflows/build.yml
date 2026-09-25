@@ -1,0 +1,75 @@
+name: Build Application
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm install --legacy-peer-deps
+
+    - name: Build application
+      run: npm run build
+      env:
+        NODE_ENV: production
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: false
+        tags: agency-platform:${{ github.sha }}
+        cache-from: type=registry,ref=agency-platform:buildcache
+        cache-to: type=registry,ref=agency-platform:buildcache,mode=max
+        outputs: type=docker,dest=/tmp/image.tar
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: |
+          .next/
+          public/
+          node_modules/.prisma/
+
+    - name: Create Release
+      if: success()
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.run_number }}
+        release_name: Release ${{ github.run_number }}
+        body: |
+          Build: ${{ github.sha }}
+          Branch: main
+        draft: false
+        prerelease: false
+
+    - name: Notify Success
+      if: success()
+      run: echo "✅ Build successful for commit ${{ github.sha }}"
+
+    - name: Notify Failure
+      if: failure()
+      run: echo "❌ Build failed for commit ${{ github.sha }}"

@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+README.md
+.env
+.env.local
+.DS_Store
+npm-debug.log
+coverage
+__tests__
+.prettier
+.eslintrc
+jest.config.js
+tsconfig.json
+next.config.ts
