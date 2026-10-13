@@ -1,0 +1,18 @@
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install --legacy-peer-deps",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "env": {
+    "DATABASE_URL": {
+      "description": "MySQL database URL"
+    },
+    "JWT_SECRET": {
+      "description": "JWT secret key"
+    },
+    "ANTHROPIC_API_KEY": {
+      "description": "Anthropic API key"
+    }
+  }
+}
