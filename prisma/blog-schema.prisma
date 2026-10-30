@@ -1,0 +1,115 @@
+// ============================================================================
+// BLOG CMS - PRISMA SCHEMA MODELS
+// ============================================================================
+
+// Blog Category Model
+model BlogCategory {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  slug            String   @unique
+  description     String?  @db.Text
+  color           String   @default("#3b82f6")  // Primary color for category
+  icon            String   @default("📝")      // Emoji icon
+  posts           BlogPost[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("blog_categories")
+}
+
+// Blog Tag Model
+model BlogTag {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  slug            String   @unique
+  color           String   @default("#10b981")
+  posts           BlogPost[]
+  createdAt       DateTime @default(now())
+
+  @@map("blog_tags")
+}
+
+// Blog Post Model (Main)
+model BlogPost {
+  id              String   @id @default(cuid())
+  title           String
+  slug            String   @unique
+  description     String?  @db.Text
+  content         String   @db.LongText  // Block Editor JSON content
+  
+  // Featured content
+  featuredImage   String?
+  
+  // Metadata
+  category        BlogCategory @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId      String?
+  tags            BlogTag[]
+  author          User     @relation("BlogAuthor", fields: [authorId], references: [id])
+  authorId        String
+  
+  // Status & Publishing
+  status          String   @default("draft")  // draft, published, archived
+  publishedAt     DateTime?
+  featured        Boolean  @default(false)
+  
+  // SEO
+  seoTitle        String?
+  seoDescription  String?
+  seoKeywords     String?
+  
+  // Stats
+  views           Int      @default(0)
+  comments        BlogComment[]
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([authorId])
+  @@index([status])
+  @@index([slug])
+  @@map("blog_posts")
+}
+
+// Blog Comment Model
+model BlogComment {
+  id              String   @id @default(cuid())
+  content         String   @db.Text
+  author          User     @relation("BlogCommentAuthor", fields: [authorId], references: [id])
+  authorId        String
+  post            BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId          String
+  
+  status          String   @default("pending")  // pending, approved, rejected
+  approved        Boolean  @default(false)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([status])
+  @@map("blog_comments")
+}
+
+// Update User model to include blog relations
+// Add to existing User model:
+/*
+  // Blog relations
+  blogPosts       BlogPost[] @relation("BlogAuthor")
+  blogComments    BlogComment[] @relation("BlogCommentAuthor")
+*/
+
+// ============================================================================
+// DATABASE INDEXES
+// ============================================================================
+// These queries will be fast:
+// - Find all posts by category
+// - Find all posts by author
+// - Find published posts
+// - Search posts by slug
+// - Get featured posts
+// - Get latest posts
+// - Get post comments
+
